@@ -23,6 +23,6 @@ var map;
     </script>
  
     <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBgv-L7ZHb-NOVg6Nn-fJDAl7K_7i-pSec&callback=initMap">
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC84oyuwpdQ8b1AFlKn3Rothi_5lXXq7l4&callback=initMap">
     </script>
     @endsection

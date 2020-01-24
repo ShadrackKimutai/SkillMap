@@ -25,9 +25,13 @@ Route::get('/entrepreneurs', function () {
 return view('entrepreneurs')->withData($data);
 });
 
+Route::get('/map', function() {
+	return view('welcome');
+});
 Auth::routes();
 
 Route::get('home', 'HomeController@index')->name('home');
 Route::get('profile', 'UserController@CurrentProfile');
 Route::post('edit-profile', 'UserController@update_avatar');
 Route::get('edit-profile','UserController@profile');
+
