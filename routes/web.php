@@ -1,5 +1,6 @@
 <?php
-
+//use Auth;
+use App\Http\Controllers\User;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -12,9 +13,21 @@
 */
 
 Route::get('/', function () {
-    return view('welcome');
+	$data=DB::table('users')->get();
+    return view('index')->withData($data);
+});
+Route::get('/entrepreneurs', function () {
+ $data=DB::table('users')->get();
+ 
+
+//dd($graduate);
+//dd($data);
+return view('entrepreneurs')->withData($data);
 });
 
 Auth::routes();
 
-Route::get('/home', 'HomeController@index')->name('home');
+Route::get('home', 'HomeController@index')->name('home');
+Route::get('profile', 'UserController@CurrentProfile');
+Route::post('edit-profile', 'UserController@update_avatar');
+Route::get('edit-profile','UserController@profile');
