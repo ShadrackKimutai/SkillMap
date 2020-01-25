@@ -19,7 +19,7 @@
         </script>
         {{-- Google map api  --}}
 
-        <script async="" defer="" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC84oyuwpdQ8b1AFlKn3Rothi_5lXXq7l4&libraries=places">
+        <script async="" defer="" src="https://maps.googleapis.com/maps/api/js?key=&libraries=places">
         </script>
 
         <script src="{{asset('js/script.js')}}"></script>
