@@ -25,6 +25,6 @@
     </script>
     
     <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=[API_KEY]&callback=initMap">
+    src="https://maps.googleapis.com/maps/api/js?key={{ env('API_KEY') }}&callback=initMap">
     </script>
     @endsection
