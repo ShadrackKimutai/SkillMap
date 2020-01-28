@@ -25,8 +25,8 @@
 
   <style id="compiled-css" type="text/css">
       #map_canvas {
-    width: 980px;
-    height: 500px;
+    width: 400px;
+    height: 200px;
 }
 #current {
     padding-top: 25px;
@@ -35,13 +35,7 @@
 
 
   
-<script type="text/javascript" charset="UTF-8" src="{{ asset('js/common.js') }}"></script>
-<script type="text/javascript" charset="UTF-8" src="{{ asset('js/util.js') }}"></script>
-<script type="text/javascript" charset="UTF-8" src="{{ asset('js/map.js') }}"></script>
-<script type="text/javascript" charset="UTF-8" src="{{ asset('js/marker.js') }}"></script>
-<script type="text/javascript" charset="UTF-8" src="{{ asset('js/controls.js') }}"></script>
-<script type="text/javascript" charset="UTF-8" src="{{ asset('js/stats.js') }}"></script>
-<script type="text/javascript" charset="UTF-8" src="{{ asset('js/onion.js') }}"></script></head>
+</head>
 <body>
     
     <section>
