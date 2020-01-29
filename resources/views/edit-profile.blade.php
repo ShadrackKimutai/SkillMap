@@ -141,11 +141,13 @@
                                 @endif
                             </div>
                         </div>
+
                         <div class="form-group row">
+                          
                             <label for="location" class="col-md-4 col-form-label text-md-right">{{ __('Office Map location') }}</label>
 
                             <div class="col-md-6">
-                                <input id="location" type="text" class="form-control{{ $errors->has('location') ? ' is-invalid' : '' }}" name="location" value="{{ old('location') }}" placeholder=" e.g. 0.4855634,35.3357629" required autofocus>
+                                <input id="current" type="text" class="form-control{{ $errors->has('location') ? ' is-invalid' : '' }}" name="location" value="{{ old('location') }}" placeholder=" e.g. 0.4855634,35.3357629" required autofocus>
 
                                 @if ($errors->has('location'))
                                     <span class="invalid-feedback" role="alert">

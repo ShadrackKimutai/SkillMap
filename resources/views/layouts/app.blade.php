@@ -11,7 +11,7 @@
 
     <!-- Scripts -->
     <script src="{{ asset('js/app.js') }}" defer></script>
-
+<script type="text/javascript" src="{{ asset('js/main.js') }}"></script>
     <!-- Fonts -->
     <link rel="dns-prefetch" href="//fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css?family=Nunito" rel="stylesheet" type="text/css">
@@ -67,6 +67,16 @@
     height:90px;
     margin:5px;
     border-radius:2px;
+}
+
+#map_canvas {
+    width: 400px;
+    height: 200px;
+}
+#current {
+    padding-top: 25px;
+}
+  </style>
 }
     </style>
 
