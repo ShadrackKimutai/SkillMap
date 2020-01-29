@@ -79,7 +79,18 @@
   </style>
 }
     </style>
+  <script type="text/javascript" src="a_data/dummy.js"></script>
+    <link rel="stylesheet" type="text/css" href="a_data/normalize.css">
 
+    <link rel="stylesheet" type="text/css" href="a_data/result-light.css">
+
+      <script type="text/javascript" src="{{ asset('js/main.js') }}"></script>
+
+  <style id="compiled-css" type="text/css">
+      #map_canvas {
+    width: 400px;
+    height: 200px;
+}
 
   </head>
   <body style="margin: 0;height: 100%;padding: 0">
