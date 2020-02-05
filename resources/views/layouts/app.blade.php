@@ -22,63 +22,8 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4" crossorigin="anonymous">
     <!-- Our Custom CSS -->
     <link rel="stylesheet" href="{{ asset('css/style4.css')}}">
-  <style>
-      /* Always set the map height explicitly to define the size of the div
-       * element that contains the map. */
-      #map {
-        height: 100%;
-      }
-      /* Optional: Makes the sample page fill the window. */
-      html, body {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-      }
-.customMarker {   /* the marker div */
-    position:absolute;
-    cursor:pointer;
-    background:#424242;
-    width:100px;
-    height:100px;
 
-    /* we'll offset the div so that
-       the point passed doesn't end up at
-       the upper left corner but at the bottom
-       middle. so we'll move it left by width/2 and
-       up by height+arrow-height */
-    margin-left:-50px;  
-    margin-top:-110px;
-    border-radius:10px;
-    padding:0px;
-}
-.customMarker:after { //triangle
-    content:"";
-    position: absolute;
-    bottom: -10px;
-    left: 40px;
-    border-width: 10px 10px 0;
-    border-style: solid;
-    border-color: #424242 transparent;
-    display: block;
-    width: 0;
-}
-.customMarker img { //profile image
-    width:90px;
-    height:90px;
-    margin:5px;
-    border-radius:2px;
-}
 
-#map_canvas {
-    width: 400px;
-    height: 200px;
-}
-#current {
-    padding-top: 25px;
-}
-  </style>
-}
-    </style>
 
 
   </head>
