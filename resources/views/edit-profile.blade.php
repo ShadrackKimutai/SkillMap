@@ -82,12 +82,12 @@
                         </div>
 
                         <div class="form-group row">
-                            <label for="rating" class="col-md-4 col-form-label text-md-right">Rating:<br> <small>0-Worst 5-Best</small></label>
+                            <label for="rating" class="col-md-4 col-form-label text-md-right">Star Rating:<br> <small>0-Worst 5-Best</small></label>
 
                             <div class="col-md-6">
                                
 
-                                
+                               
                                     @for ($i = 0; $i < round($user->rating); $i++)
                                         <img src="{{asset('/images/star.png')}}" width="16px">
                                     @endfor
