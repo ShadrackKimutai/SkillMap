@@ -26,7 +26,7 @@ return view('entrepreneurs')->withData($data);
 });
 
 Route::get('/map', function() {
-	return view('welcome');
+	return view('mapscript');
 });
 Auth::routes();
 

@@ -24,7 +24,6 @@ class UserController extends Controller
         $request->validate([
             'avatar' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:400',
             'expertice' =>'required',
-            'rating' =>'required',
             'availability'=>'required',
             'area'=>'required',
             'location'=>'required',
@@ -39,7 +38,6 @@ class UserController extends Controller
 
         $user->avatar = $avatarName;
         $user->expertice=$request->expertice;
-        $user->rating=$request->rating;
         $user->availability=$request->availability;
         $user->area=$request->area;
         $user->location=$request->location;

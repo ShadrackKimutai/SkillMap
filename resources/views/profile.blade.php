@@ -59,7 +59,7 @@
 
         </div>
 <br>
-       <font style="font-size: 1em;" >Rating:  @for ($i = 0; $i < $user->rating; $i++)
+       <font style="font-size: 1em;" >Rating:  @for ($i = 0; $i < round($user->rating); $i++)
             <img src="{{asset('/images/star.png')}}" width="16px">
         @endfor
         <hr>
