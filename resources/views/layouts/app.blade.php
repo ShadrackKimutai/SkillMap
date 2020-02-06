@@ -10,6 +10,7 @@
     <title>@yield('title')</title>
 
     <!-- Scripts -->
+    
     <script src="{{ asset('js/app.js') }}" defer></script>
 <script type="text/javascript" src="{{ asset('js/main.js') }}"></script>
     <!-- Fonts -->
@@ -20,6 +21,7 @@
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
         <!-- Bootstrap CSS CDN -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4" crossorigin="anonymous">
+
     <!-- Our Custom CSS -->
     <link rel="stylesheet" href="{{ asset('css/style4.css')}}">
 

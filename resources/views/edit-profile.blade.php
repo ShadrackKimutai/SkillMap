@@ -85,13 +85,13 @@
                             <label for="rating" class="col-md-4 col-form-label text-md-right">Rating:<br> <small>0-Worst 5-Best</small></label>
 
                             <div class="col-md-6">
-                                <input id="rating" type="number" class="form-control{{ $errors->has('rating') ? ' is-invalid' : '' }}" name="rating" value="{{ old('rating') }}" required max="5" min="0">
+                               
 
-                                @if ($errors->has('rating'))
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $errors->first('rating') }}</strong>
-                                    </span>
-                                @endif
+                                
+                                    @for ($i = 0; $i < round($user->rating); $i++)
+                                        <img src="{{asset('/images/star.png')}}" width="16px">
+                                    @endfor
+                              
                             </div>
                         </div>
 
