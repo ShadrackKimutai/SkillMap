@@ -36,7 +36,7 @@
     width: 400px;
     height: 200px;
 }
-
+</style>
   </head>
   <body style="margin: 0;height: 100%;padding: 0">
      <div class="wrapper">
