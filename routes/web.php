@@ -30,7 +30,10 @@ Route::get('/map', function() {
 });
 Auth::routes();
 
-Route::get('home', 'HomeController@index')->name('home');
+Route::get('home', function(){ 
+	$data=DB::table('users')->get();
+	return view('home')->withData($data);
+});
 Route::get('profile', 'UserController@CurrentProfile');
 Route::post('edit-profile', 'UserController@update_avatar');
 Route::get('edit-profile','UserController@profile');
