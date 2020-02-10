@@ -22,15 +22,15 @@
             '/images/';
 
         var icons = {
-          parking: {
+          gardener: {
             icon: iconBase + 'gardener.svg',
-            scale: 0.2
+            scale: 0.15
           },
-          library: {
+          electrician: {
             icon: iconBase + 'electrician.svg',
             scale: 0.15
           },
-          info: {
+          mason: {
             icon: iconBase + 'mason.svg',
             scale: 0.15
           }
@@ -40,10 +40,10 @@
           
          {
             position: new google.maps.LatLng(0.5131953371116661,35.30581963062285),
-            type: 'info'
+            type: 'mason'
           }, {
             position: new google.maps.LatLng(0.4802590486577686,35.30200016498564),
-            type: 'info'
+            type: 'gardener'
           }
           
         ];
