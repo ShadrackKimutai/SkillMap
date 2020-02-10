@@ -118,7 +118,7 @@
         var infoWindowContent = [
         @foreach($data as $entre)
         { 
-          ['<div class="info_content"><br> {{ $entre->name }} <p> {{ $entre->contacts }} </p></div>'],
+          '<div class="info_content"><br> {{ $entre->name }} <p> {{ $entre->contacts }} </p></div>',
 
         }
         @endforeach
