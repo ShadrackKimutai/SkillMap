@@ -38,7 +38,6 @@ class UserController extends Controller
 
         $user->avatar = $avatarName;
         $user->expertice=$request->expertice;
-        $user->icon = str_replace(' ', '-', $expertice);
         $user->availability=$request->availability;
         $user->area=$request->area;
         $user->location=$request->location;
