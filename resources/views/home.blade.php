@@ -11,33 +11,40 @@
       var map;
       function initMap() {
         map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 18,
-          center: new google.maps.LatLng(0.6711880,35.5070199),
+          zoom: 12,
+          center: new google.maps.LatLng(0.5,35.3),
           mapTypeId: 'roadmap'
         });
 
         
 
-        var iconBase = './images/';
+        var iconBase =
+            '/images/';
+
         var icons = {
-          agent: {
-            icon: iconBase + 'Mason.svg'
+          parking: {
+            icon: iconBase + 'gardener.svg',
+            scale: 0.2
           },
-          mobile-fix: {
-            icon: iconBase + 'ComputerRepaire.svg'
+          library: {
+            icon: iconBase + 'electrician.svg',
+            scale: 0.15
           },
-          electrician2: {
-            icon: iconBase + 'Electrician.svg'
+          info: {
+            icon: iconBase + 'mason.svg',
+            scale: 0.15
           }
-
-
-
-
         };
 
         var features = [
           
-          <?php echo $msg; ?>
+         {
+            position: new google.maps.LatLng(0.5131953371116661,35.30581963062285),
+            type: 'info'
+          }, {
+            position: new google.maps.LatLng(0.4802590486577686,35.30200016498564),
+            type: 'info'
+          }
           
         ];
 
@@ -46,7 +53,10 @@
           var marker = new google.maps.Marker({
             position: feature.position,
             icon: icons[feature.type].icon,
-            map: map
+           draggable: false,
+            scaledSize: new google.maps.Size(25, 25),
+             map: map
+
           });
         });
       }

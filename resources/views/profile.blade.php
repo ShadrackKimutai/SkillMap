@@ -59,9 +59,9 @@
 
         </div>
 <br>
-       <font style="font-size: 1em;" >Rating:  
+       <font style="font-size: 1em;" >
         @for ($i = 0; $i < round($user->rating); $i++)
-            <img src="{{asset('/images/star.svg')}}" width="24px" alt="⭐">
+            <img src="{{asset('/images/star.svg')}}" width="35px" alt="⭐">
         @endfor
         <hr>
        <i class="fa fa-map"></i> Area: {{$user->area}}
