@@ -37,15 +37,15 @@
         };
 
         var features = [
-          
-         {
-            position: new google.maps.LatLng(0.5131953371116661,35.30581963062285),
+          @foreach($data as $entre)
+          {
+            position: new google.maps.LatLng({{ $entre->location }}),
             type: 'mason'
-          }, {
-            position: new google.maps.LatLng(0.4802590486577686,35.30200016498564),
-            type: 'gardener'
-          }
-          
+          },
+
+          @endforeach
+
+        
         ];
 
         // Create markers.
