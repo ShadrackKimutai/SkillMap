@@ -1,4 +1,4 @@
- @extends('layouts.app')
+@extends('layouts.app')
 @section('title', 'SkillMap Home')
 @section('content')
 
@@ -37,15 +37,15 @@
         };
 
         var features = [
-          
-         {
-            position: new google.maps.LatLng(0.5131953371116661,35.30581963062285),
-            type: 'mason'
-          }, {
-            position: new google.maps.LatLng(0.4802590486577686,35.30200016498564),
-            type: 'gardener'
-          }
-          
+          @foreach($data as $entre)
+          {
+            position: new google.maps.LatLng({{ $entre->location }}),
+            type: '{{$entre->icon}}'
+          },
+
+          @endforeach
+
+        
         ];
 
         // Create markers.

@@ -21,6 +21,8 @@ class CreateUsersTable extends Migration
             $table->string('password');
             $table->string('avatar')->default('user.jpg');
              $table->text('expertice')->nullable();
+            $table->text('icon')->nullable();
+
         $table->integer('rating')->nullable();
         $table->string('availability')->default('full time');
         $table->string('area')->nullable();
