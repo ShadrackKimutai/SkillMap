@@ -22,16 +22,84 @@
             '/images/';
 
         var icons = {
-          gardener: {
-            icon: iconBase + 'gardener.svg',
+          accountant: {
+            icon: iconBase + 'accountant.svg',
+            scale: 0.15
+          },
+          agent: {
+            icon: iconBase + 'agent.svg',
+            scale: 0.15
+          },
+          architect: {
+            icon: iconBase + 'architect.svg',
+            scale: 0.15
+          },
+          builderaid: {
+            icon: iconBase + 'builderaid.svg',
+            scale: 0.15
+          },
+          carpenter: {
+            icon: iconBase + 'carpenter.svg',
+            scale: 0.15
+          },
+          chef: {
+            icon: iconBase + 'chef.svg',
+            scale: 0.15
+          },
+          cleaner: {
+            icon: iconBase + 'cleaner.svg',
+            scale: 0.15
+          },
+          computeraideddesigner: {
+            icon: iconBase + 'computeraideddesigner.svg',
+            scale: 0.15
+          },
+          computerprogrammer: {
+            icon: iconBase + 'computerprogrammer.svg',
+            scale: 0.15
+          },
+          computerrepair: {
+            icon: iconBase + 'computerrepair.svg',
+            scale: 0.15
+          },
+          electricinstaller: {
+            icon: iconBase + 'electricinstaller.svg',
             scale: 0.15
           },
           electrician: {
             icon: iconBase + 'electrician.svg',
             scale: 0.15
           },
-          mason: {
+          gardener: {
+            icon: iconBase + 'gardener.svg',
+            scale: 0.15
+          },
+          indoordesigner: {
+            icon: iconBase + 'indoordesigner.svg',
+            scale: 0.15
+          },
+          laundry: {
+            icon: iconBase + 'laundry.svg',
+            scale: 0.15
+          },
+           mason: {
             icon: iconBase + 'mason.svg',
+            scale: 0.15
+          },
+           painter: {
+            icon: iconBase + 'painter.svg',
+            scale: 0.15
+          },
+           phonerepair: {
+            icon: iconBase + 'phonerepair.svg',
+            scale: 0.15
+          },
+           plumber: {
+            icon: iconBase + 'plumber.svg',
+            scale: 0.15
+          },
+           tvinstaller: {
+            icon: iconBase + 'tvinstaller.svg',
             scale: 0.15
           }
         };
@@ -42,11 +110,21 @@
             position: new google.maps.LatLng({{ $entre->location }}),
             type: '{{$entre->icon}}'
           },
-
           @endforeach
-
-        
+       
         ];
+
+        // infowindows
+        var infoWindowContent = [
+        @foreach($data as $entre)
+        { 
+          ['<div class="info_content"><br> {{ $entre->name }} <p> {{ $entre->contacts }} </p></div>'],
+
+        }
+        @endforeach
+        ];
+
+
 
         // Create markers.
         features.forEach(function(feature) {
@@ -59,7 +137,8 @@
 
           });
         });
-      }
+      
+    }
     </script>
     
     <script async defer

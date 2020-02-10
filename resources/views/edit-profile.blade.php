@@ -64,13 +64,29 @@
 
                             <div class="col-md-6">
                                 <Select id="expertice" type="text" class="form-control{{ $errors->has('expertice') ? ' is-invalid' : '' }}" name="expertice" value="{{ old('expertice') }}" required autofocus>
-                                    <option>Electrician</option>
-                                    <option>Plumber</option>
-                                    <option>Mason</option>
-                                    <option>TV Installer</option>
+                                    <option>Accountant</option>
+                                    <option>Agent</option>
+                                    <option>Architect</option>
+                                    <option>Auto Mechanic</option>
+                                    <option>Builder Aid</option>
+                                    <option>Carpenter</option>
+                                    <option>Chef</option>
                                     <option>Cleaner</option>
-                                    <option>Computer Repairer</option>
-                                    <option>Phone Repairer</option>
+                                    <option>Computer Aided Designer</option>
+                                    <option>Computer Programmer</option>
+                                    <option>Computer Repair</option>
+                                    <option>Electric Installer</option>
+                                    <option>Electrician</option>
+                                    <option>Gardener</option>
+                                    <option>Indoor Designer</option>
+                                    <option>Laundry</option>
+                                    <option>Locksmith</option>
+                                    <option>Mason</option>
+                                    <option>Painter</option>
+                                    <option>Phone Repair</option>
+                                    <option>Plumber</option>
+                                    <option>TV Installer</option>
+
 
                                 </Select>
                                 @if ($errors->has('expertice'))
