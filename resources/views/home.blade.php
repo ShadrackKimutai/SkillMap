@@ -109,22 +109,27 @@
           {
             position: new google.maps.LatLng({{ $entre->location }}),
             type: '{{$entre->icon}}'
+           
           },
+
           @endforeach
-       
+
+        
         ];
 
-        // infowindows
-        var infoWindowContent = [
-        @foreach($data as $entre)
-        { 
-          '<div class="info_content"><br> {{ $entre->name }} <p> {{ $entre->contacts }} </p></div>',
+          var content= [
+          @foreach($data as $entre)
+          {
+           msg='<div id="content">'+
+           '<div id="siteNotice"></div>'+
+           '<h1 id="firstHeading" class="firstHeading">{{ $entre->name }}</h1>'+
+           '<div id="bodyContent">'+
 
-        }
-        @endforeach
-        ];
-
-
+           '</div>'+
+           '</div>'
+         },
+         @endforeach
+         ];
 
         // Create markers.
         features.forEach(function(feature) {
@@ -136,9 +141,11 @@
              map: map
 
           });
+
         });
-      
-    }
+
+
+      }
     </script>
     
     <script async defer
