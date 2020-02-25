@@ -101,7 +101,7 @@
     lat: {{ $entre->lat }},
     lng:{{ $entre->lng }},
     type: '{{ $entre->icon }}',
-    "description": '<h5>{{ $entre->name }}</h5>Availability:{{ $entre->availability }}<br>Phone:{{ $entre->contacts }} '
+    "description": '<h5>{{ $entre->name }}</h5> <b>{{  $entre->expertice }}</b><br>Availability:{{ $entre->availability }}<br>Phone:{{ $entre->contacts }} '
   },
 
   @endforeach
