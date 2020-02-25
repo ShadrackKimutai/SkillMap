@@ -167,7 +167,7 @@
                                 <div id="map" style="float: right;"></div>
                                 <br>
                                 <br>
-                                <input id="current" type="text" class="form-control{{ $errors->has('location') ? ' is-invalid' : '' }}" name="location" value="{{ old('location') }}" placeholder=" e.g. 0.4855634,35.3357629" required autofocus>
+                                <input id="current" type="text" class="form-control{{ $errors->has('location') ? ' is-invalid' : '' }}" name="location" value="{{ old('lat') }},{{ old('lng') }}" placeholder=" e.g. 0.4855634,35.3357629" required autofocus>
 
                                 @if ($errors->has('location'))
                                     <span class="invalid-feedback" role="alert">

@@ -32,6 +32,8 @@ class UserController extends Controller
 
         $user = Auth::user();
 
+        $location = explode(",", $request->location); 
+
         $avatarName = $user->id.'_avatar'.time().'.'.request()->avatar->getClientOriginalExtension();
         $request->avatar->storeAs('avatars',$avatarName);
         $user->avatar = $avatarName;
@@ -39,7 +41,8 @@ class UserController extends Controller
         $user->icon = strtolower(str_replace(' ', '', $user->expertice));
         $user->availability=$request->availability;
         $user->area=$request->area;
-        $user->location=$request->location;
+        $user->lat=$location[0];
+        $user->lng=$location[1];
         $user->contacts=$request->contacts;
         $user->save();
 

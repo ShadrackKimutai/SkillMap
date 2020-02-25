@@ -26,7 +26,8 @@ class CreateUsersTable extends Migration
         $table->integer('rating')->nullable();
         $table->string('availability')->default('full time');
         $table->string('area')->nullable();
-        $table->string('location')->nullable();
+        $table->string('lat')->nullable();
+        $table->string('lng')->nullable();
         $table->string('contacts')->nullable();
             $table->rememberToken();
             $table->timestamps();

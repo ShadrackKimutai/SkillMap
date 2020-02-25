@@ -39,7 +39,7 @@
             <td>
 
 
-              <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModal" data-loc="{{ $entre->location }}">
+              <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModal" data-loc="{{ $entre->lat }},{{ $entre->lng }}">
                 Locate
               </button>
 
