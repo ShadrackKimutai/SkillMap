@@ -101,7 +101,8 @@
     lat: {{ $entre->lat }},
     lng:{{ $entre->lng }},
     type: '{{ $entre->icon }}',
-    "description": "<img src='/storage/avatars/{{ $entre->avatar }}' width='100px' height='100px'></div><div style='float:right; padding: 10px;'>"+"<h5>{{ $entre->name }}</h5> <b>{{  $entre->expertice }}</b><br>Availability:{{ $entre->availability }}<br>Phone:{{ $entre->contacts }}"
+    "description": "<img src='/storage/avatars/{{ $entre->avatar }}' width='100px' height='100px'></div><div style='float:right; padding: 10px;'>"+"<h5>{{ $entre->name }}</h5> <b>{{  $entre->expertice }} - Rated {{ $entre->rating }}</b><br>Availability:{{ $entre->availability }}<br>Phone:{{ $entre->contacts }} <br>"
+                
   },
 
   @endforeach
