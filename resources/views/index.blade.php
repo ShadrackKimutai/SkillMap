@@ -101,7 +101,7 @@
     lat: {{ $entre->lat }},
     lng:{{ $entre->lng }},
     type: '{{ $entre->icon }}',
-    "description": '<h5>{{ $entre->name }}</h5> <b>{{  $entre->expertice }}</b><br>Availability:{{ $entre->availability }}<br>Phone:{{ $entre->contacts }} '
+    "description": "<img src='/storage/avatars/{{ $entre->avatar }}' width='100px' height='100px'></div><div style='float:right; padding: 10px;'>"+"<h5>{{ $entre->name }}</h5> <b>{{  $entre->expertice }}</b><br>Availability:{{ $entre->availability }}<br>Phone:{{ $entre->contacts }}"
   },
 
   @endforeach
@@ -136,7 +136,7 @@
             (function (marker, data) {
               google.maps.event.addListener(marker, "click", function (e) {
                     //Wrap the content inside an HTML DIV in order to set height and width of InfoWindow.
-                    infoWindow.setContent("<div style = 'width:200px;min-height:40px'>" + data.description + "</div>");
+                    infoWindow.setContent("<div style='float:left'>" + data.description + "</div>");
                     infoWindow.open(map, marker);
                   });
             })(marker, data);
