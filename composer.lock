@@ -445,7 +445,7 @@
                 "ext-openssl": "*",
                 "league/commonmark": "^1.1",
                 "league/commonmark-ext-table": "^2.1",
-                "league/flysystem": "^1.1.4",
+                "league/flysystem": "1.1.4",
                 "monolog/monolog": "^1.12|^2.0",
                 "nesbot/carbon": "^2.0",
                 "opis/closure": "^3.1",
