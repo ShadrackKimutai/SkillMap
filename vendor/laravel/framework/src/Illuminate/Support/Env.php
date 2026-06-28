@@ -2,11 +2,10 @@
 
 namespace Illuminate\Support;
 
-use Dotenv\Environment\Adapter\EnvConstAdapter;
-use Dotenv\Environment\Adapter\PutenvAdapter;
-use Dotenv\Environment\Adapter\ServerConstAdapter;
-use Dotenv\Environment\DotenvFactory;
+use Dotenv\Repository\Adapter\PutenvAdapter;
+use Dotenv\Repository\RepositoryBuilder;
 use PhpOption\Option;
+use RuntimeException;
 
 class Env
 {
@@ -18,18 +17,11 @@ class Env
     protected static $putenv = true;
 
     /**
-     * The environment factory instance.
+     * The environment repository instance.
      *
-     * @var \Dotenv\Environment\FactoryInterface|null
+     * @var \Dotenv\Repository\RepositoryInterface|null
      */
-    protected static $factory;
-
-    /**
-     * The environment variables instance.
-     *
-     * @var \Dotenv\Environment\VariablesInterface|null
-     */
-    protected static $variables;
+    protected static $repository;
 
     /**
      * Enable the putenv adapter.
@@ -39,8 +31,7 @@ class Env
     public static function enablePutenv()
     {
         static::$putenv = true;
-        static::$factory = null;
-        static::$variables = null;
+        static::$repository = null;
     }
 
     /**
@@ -51,45 +42,31 @@ class Env
     public static function disablePutenv()
     {
         static::$putenv = false;
-        static::$factory = null;
-        static::$variables = null;
+        static::$repository = null;
     }
 
     /**
-     * Get the environment factory instance.
+     * Get the environment repository instance.
      *
-     * @return \Dotenv\Environment\FactoryInterface
+     * @return \Dotenv\Repository\RepositoryInterface
      */
-    public static function getFactory()
+    public static function getRepository()
     {
-        if (static::$factory === null) {
-            $adapters = array_merge(
-                [new EnvConstAdapter, new ServerConstAdapter],
-                static::$putenv ? [new PutenvAdapter] : []
-            );
+        if (static::$repository === null) {
+            $builder = RepositoryBuilder::createWithDefaultAdapters();
 
-            static::$factory = new DotenvFactory($adapters);
+            if (static::$putenv) {
+                $builder = $builder->addAdapter(PutenvAdapter::class);
+            }
+
+            static::$repository = $builder->immutable()->make();
         }
 
-        return static::$factory;
+        return static::$repository;
     }
 
     /**
-     * Get the environment variables instance.
-     *
-     * @return \Dotenv\Environment\VariablesInterface
-     */
-    public static function getVariables()
-    {
-        if (static::$variables === null) {
-            static::$variables = static::getFactory()->createImmutable();
-        }
-
-        return static::$variables;
-    }
-
-    /**
-     * Gets the value of an environment variable.
+     * Get the value of an environment variable.
      *
      * @param  string  $key
      * @param  mixed  $default
@@ -97,7 +74,31 @@ class Env
      */
     public static function get($key, $default = null)
     {
-        return Option::fromValue(static::getVariables()->get($key))
+        return self::getOption($key)->getOrCall(fn () => value($default));
+    }
+
+    /**
+     * Get the value of a required environment variable.
+     *
+     * @param  string  $key
+     * @return mixed
+     *
+     * @throws \RuntimeException
+     */
+    public static function getOrFail($key)
+    {
+        return self::getOption($key)->getOrThrow(new RuntimeException("Environment variable [$key] has no value."));
+    }
+
+    /**
+     * Get the possible option for this environment variable.
+     *
+     * @param  string  $key
+     * @return \PhpOption\Option|\PhpOption\Some
+     */
+    protected static function getOption($key)
+    {
+        return Option::fromValue(static::getRepository()->get($key))
             ->map(function ($value) {
                 switch (strtolower($value)) {
                     case 'true':
@@ -119,9 +120,6 @@ class Env
                 }
 
                 return $value;
-            })
-            ->getOrCall(function () use ($default) {
-                return value($default);
             });
     }
 }

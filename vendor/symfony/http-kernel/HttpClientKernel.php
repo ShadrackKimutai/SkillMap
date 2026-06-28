@@ -21,6 +21,9 @@ use Symfony\Component\Mime\Part\Multipart\FormDataPart;
 use Symfony\Component\Mime\Part\TextPart;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
+// Help opcache.preload discover always-needed symbols
+class_exists(ResponseHeaderBag::class);
+
 /**
  * An implementation of a Symfony HTTP kernel using a "real" HTTP client.
  *
@@ -28,18 +31,18 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final class HttpClientKernel implements HttpKernelInterface
 {
-    private $client;
+    private HttpClientInterface $client;
 
-    public function __construct(HttpClientInterface $client = null)
+    public function __construct(?HttpClientInterface $client = null)
     {
-        if (!class_exists(HttpClient::class)) {
-            throw new \LogicException(sprintf('You cannot use "%s" as the HttpClient component is not installed. Try running "composer require symfony/http-client".', __CLASS__));
+        if (null === $client && !class_exists(HttpClient::class)) {
+            throw new \LogicException(\sprintf('You cannot use "%s" as the HttpClient component is not installed. Try running "composer require symfony/http-client".', __CLASS__));
         }
 
         $this->client = $client ?? HttpClient::create();
     }
 
-    public function handle(Request $request, $type = HttpKernelInterface::MASTER_REQUEST, $catch = true): Response
+    public function handle(Request $request, int $type = HttpKernelInterface::MAIN_REQUEST, bool $catch = true): Response
     {
         $headers = $this->getHeaders($request);
         $body = '';
@@ -50,10 +53,13 @@ final class HttpClientKernel implements HttpKernelInterface
         $response = $this->client->request($request->getMethod(), $request->getUri(), [
             'headers' => $headers,
             'body' => $body,
-            'max_redirects' => 0,
         ] + $request->attributes->get('http_client_options', []));
 
         $response = new Response($response->getContent(!$catch), $response->getStatusCode(), $response->getHeaders(!$catch));
+
+        $response->headers->remove('X-Body-File');
+        $response->headers->remove('X-Body-Eval');
+        $response->headers->remove('X-Content-Digest');
 
         $response->headers = new class($response->headers->all()) extends ResponseHeaderBag {
             protected function computeCacheControlValue(): string

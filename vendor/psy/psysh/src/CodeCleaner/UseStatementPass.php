@@ -3,7 +3,7 @@
 /*
  * This file is part of Psy Shell.
  *
- * (c) 2012-2018 Justin Hileman
+ * (c) 2012-2026 Justin Hileman
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -12,12 +12,12 @@
 namespace Psy\CodeCleaner;
 
 use PhpParser\Node;
-use PhpParser\Node\Name;
-use PhpParser\Node\Name\FullyQualified as FullyQualifiedName;
-use PhpParser\Node\Stmt\GroupUse;
+use PhpParser\Node\Identifier;
 use PhpParser\Node\Stmt\Namespace_;
 use PhpParser\Node\Stmt\Use_;
-use PhpParser\NodeTraverser;
+use PhpParser\Node\Stmt\UseItem;
+use PhpParser\Node\Stmt\UseUse;
+use Psy\Exception\FatalErrorException;
 
 /**
  * Provide implicit use statements for subsequent execution.
@@ -28,99 +28,135 @@ use PhpParser\NodeTraverser;
  *
  * ... which it then applies implicitly to all future evaluated code, until the
  * current namespace is replaced by another namespace.
+ *
+ * Extends NamespaceAwarePass to leverage shared alias tracking.
  */
-class UseStatementPass extends CodeCleanerPass
+class UseStatementPass extends NamespaceAwarePass
 {
-    private $aliases       = [];
-    private $lastAliases   = [];
-    private $lastNamespace = null;
-
     /**
-     * Re-load the last set of use statements on re-entering a namespace.
-     *
-     * This isn't how namespaces normally work, but because PsySH has to spin
-     * up a new namespace for every line of code, we do this to make things
-     * work like you'd expect.
-     *
-     * @param Node $node
+     * {@inheritdoc}
      */
     public function enterNode(Node $node)
     {
-        if ($node instanceof Namespace_) {
-            // If this is the same namespace as last namespace, let's do ourselves
-            // a favor and reload all the aliases...
-            if (\strtolower($node->name) === \strtolower($this->lastNamespace)) {
-                $this->aliases = $this->lastAliases;
-            }
+        // Check for use statement conflicts BEFORE parent adds it to aliases
+        // Skip re-injected use statements (marked with 'psyshReinjected' attribute)
+        if ($node instanceof Use_ && !$node->getAttribute('psyshReinjected')) {
+            $this->validateUseStatement($node);
         }
+
+        return parent::enterNode($node);
     }
 
     /**
-     * If this statement is a namespace, forget all the aliases we had.
+     * Re-inject use statements from previous inputs.
      *
-     * If it's a use statement, remember the alias for later. Otherwise, apply
-     * remembered aliases to the code.
+     * Each REPL input is evaluated separately; re-injecting use statements matches PHP behavior for
+     * namespaces and use statements in a file.
      *
-     * @param Node $node
+     * @return Node[]|null Array of nodes
      */
-    public function leaveNode(Node $node)
+    public function beforeTraverse(array $nodes)
     {
-        if ($node instanceof Use_) {
-            // Store a reference to every "use" statement, because we'll need
-            // them in a bit.
-            foreach ($node->uses as $use) {
-                $alias = $use->alias ?: \end($use->name->parts);
-                $this->aliases[\strtolower($alias)] = $use->name;
-            }
+        parent::beforeTraverse($nodes);
 
-            return NodeTraverser::REMOVE_NODE;
-        } elseif ($node instanceof GroupUse) {
-            // Expand every "use" statement in the group into a full, standalone
-            // "use" and store 'em with the others.
-            foreach ($node->uses as $use) {
-                $alias = $use->alias ?: \end($use->name->parts);
-                $this->aliases[\strtolower($alias)] = Name::concat($node->prefix, $use->name, [
-                    'startLine' => $node->prefix->getAttribute('startLine'),
-                    'endLine'   => $use->name->getAttribute('endLine'),
-                ]);
-            }
+        if (!$this->cleaner) {
+            return null;
+        }
 
-            return NodeTraverser::REMOVE_NODE;
-        } elseif ($node instanceof Namespace_) {
-            // Start fresh, since we're done with this namespace.
-            $this->lastNamespace = $node->name;
-            $this->lastAliases   = $this->aliases;
-            $this->aliases       = [];
-        } else {
-            foreach ($node as $name => $subNode) {
-                if ($subNode instanceof Name) {
-                    // Implicitly thunk all aliases.
-                    if ($replacement = $this->findAlias($subNode)) {
-                        $node->$name = $replacement;
+        // Check for namespace declarations in the input
+        foreach ($nodes as $node) {
+            if ($node instanceof Namespace_) {
+                // Only re-inject use statements if this is a wrapper created by NamespacePass.
+                // This matches PHP behavior: explicit namespace declaration clears use statements.
+                if ($node->getAttribute('psyshReinjected')) {
+                    $aliasesByType = $this->cleaner->getAliasesByTypeForNamespace($node->name);
+                    if (!empty($aliasesByType)) {
+                        $useStatements = $this->createUseStatements($aliasesByType);
+                        $node->stmts = \array_merge($useStatements, $node->stmts ?? []);
                     }
                 }
+
+                // Don't process other nodes or return modified nodes
+                return null;
+            }
+        }
+
+        // No namespace declaration in input, or re-applied by NamespacePass; re-inject use
+        // statements for the empty namespace.
+        $aliasesByType = $this->cleaner->getAliasesByTypeForNamespace(null);
+        if (!empty($aliasesByType)) {
+            $useStatements = $this->createUseStatements($aliasesByType);
+            $nodes = \array_merge($useStatements, $nodes);
+        }
+
+        return $nodes;
+    }
+
+    /**
+     * If we have aliases but didn't leave a namespace (global namespace case), persist them to
+     * CodeCleaner for the next traversal.
+     *
+     * {@inheritdoc}
+     */
+    public function afterTraverse(array $nodes)
+    {
+        if (!$this->cleaner) {
+            return null;
+        }
+
+        // Persist aliases if they're at the global level (not inside any namespace)
+        if (!empty($this->aliasesByType)) {
+            $this->cleaner->setAliasesByTypeForNamespace(null, $this->aliasesByType);
+        }
+
+        return null;
+    }
+
+    /**
+     * Validate that a use statement doesn't conflict with existing aliases.
+     *
+     * @throws FatalErrorException if the alias is already in use
+     *
+     * @param Use_ $stmt The use statement node
+     */
+    private function validateUseStatement(Use_ $stmt): void
+    {
+        $seenAliases = [];
+
+        foreach ($stmt->uses as $useItem) {
+            $alias = \strtolower($useItem->getAlias());
+            $type = $this->getUseImportType($stmt, $useItem);
+
+            if (isset($seenAliases[$type][$alias]) || isset($this->getAliasesForType($type)[$alias])) {
+                throw new FatalErrorException(\sprintf('Cannot use %s as %s because the name is already in use', $useItem->name->toString(), $useItem->getAlias()), 0, \E_ERROR, null, $stmt->getStartLine());
             }
 
-            return $node;
+            $seenAliases[$type][$alias] = true;
         }
     }
 
     /**
-     * Find class/namespace aliases.
+     * Create use statement nodes from stored aliases.
      *
-     * @param Name $name
+     * @param array $aliasesByType Map of Use_::TYPE_* constants to alias maps
      *
-     * @return FullyQualifiedName|null
+     * @return Use_[] Array of use statement nodes
      */
-    private function findAlias(Name $name)
+    private function createUseStatements(array $aliasesByType): array
     {
-        $that = \strtolower($name);
-        foreach ($this->aliases as $alias => $prefix) {
-            if ($that === $alias) {
-                return new FullyQualifiedName($prefix->toString());
-            } elseif (\substr($that, 0, \strlen($alias) + 1) === $alias . '\\') {
-                return new FullyQualifiedName($prefix->toString() . \substr($name, \strlen($alias)));
+        $useStatements = [];
+
+        foreach ([Use_::TYPE_NORMAL, Use_::TYPE_FUNCTION, Use_::TYPE_CONSTANT] as $type) {
+            foreach ($aliasesByType[$type] ?? [] as $alias => $name) {
+                // Create UseItem (PHP-Parser 5.x) or UseUse (PHP-Parser 4.x)
+                $useItem = \class_exists(UseItem::class)
+                    ? new UseItem($name, new Identifier($alias))
+                    : new UseUse($name, $alias);
+                // Mark as re-injected so we don't validate it
+                $useStatements[] = new Use_([$useItem], $type, ['psyshReinjected' => true]);
             }
         }
+
+        return $useStatements;
     }
 }

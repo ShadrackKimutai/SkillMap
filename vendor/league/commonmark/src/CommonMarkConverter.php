@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the league/commonmark package.
  *
@@ -14,47 +16,31 @@
 
 namespace League\CommonMark;
 
+use League\CommonMark\Environment\Environment;
+use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
+
 /**
  * Converts CommonMark-compatible Markdown to HTML.
  */
-class CommonMarkConverter extends Converter
+final class CommonMarkConverter extends MarkdownConverter
 {
     /**
-     * The currently-installed version.
+     * Create a new Markdown converter pre-configured for CommonMark
      *
-     * This might be a typical `x.y.z` version, or `x.y-dev`.
+     * @param array<string, mixed> $config
      */
-    public const VERSION = '1.2.2';
-
-    /** @var EnvironmentInterface */
-    protected $environment;
-
-    /**
-     * Create a new commonmark converter instance.
-     *
-     * @param array                     $config
-     * @param EnvironmentInterface|null $environment
-     */
-    public function __construct(array $config = [], EnvironmentInterface $environment = null)
+    public function __construct(array $config = [])
     {
-        if ($environment === null) {
-            $environment = Environment::createCommonMarkEnvironment();
-        }
+        $environment = new Environment($config);
+        $environment->addExtension(new CommonMarkCoreExtension());
 
-        if ($environment instanceof ConfigurableEnvironmentInterface) {
-            $environment->mergeConfig($config);
-        }
-
-        $this->environment = $environment;
-
-        parent::__construct(new DocParser($environment), new HtmlRenderer($environment));
+        parent::__construct($environment);
     }
 
-    /**
-     * @return EnvironmentInterface
-     */
-    public function getEnvironment(): EnvironmentInterface
+    public function getEnvironment(): Environment
     {
+        \assert($this->environment instanceof Environment);
+
         return $this->environment;
     }
 }

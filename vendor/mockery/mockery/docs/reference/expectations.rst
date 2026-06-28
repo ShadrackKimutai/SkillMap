@@ -148,7 +148,7 @@ is called.
         ->withSomeOfArgs(arg1, arg2, arg3, ...);
 
 The given expected arguments order doesn't matter.
-Check if expected values are inclued or not, but type should be matched:
+Check if expected values are included or not, but type should be matched:
 
 .. code-block:: php
 
@@ -447,6 +447,34 @@ We can also set a range of call counts, using ``between()``:
 This is actually identical to using ``atLeast()->times($min)->atMost()->times($max)``
 but is provided as a shorthand. It may be followed by a ``times()`` call with no
 parameter to preserve the APIs natural language readability.
+
+Multiple Calls with Different Expectations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If a method is expected to get called multiple times with different arguments
+and/or return values we can simply repeat the expectations. The same of course
+also works if we expect multiple calls to different methods.
+
+.. code-block:: php
+
+    $mock = \Mockery::mock('MyClass');
+    // Expectations for the 1st call
+    $mock->shouldReceive('name_of_method')
+        ->once()
+        ->with('arg1')
+        ->andReturn($value1)
+
+        // 2nd call to same method
+        ->shouldReceive('name_of_method')
+        ->once()
+        ->with('arg2')
+        ->andReturn($value2)
+
+        // final call to another method
+        ->shouldReceive('other_method')
+        ->once()
+        ->with('other')
+        ->andReturn($value_other);
 
 Expectation Declaration Utilities
 ---------------------------------

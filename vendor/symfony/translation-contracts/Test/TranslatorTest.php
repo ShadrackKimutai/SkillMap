@@ -11,7 +11,10 @@
 
 namespace Symfony\Contracts\Translation\Test;
 
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Translation\TranslatableMessage;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use Symfony\Contracts\Translation\TranslatorTrait;
 
@@ -24,15 +27,28 @@ use Symfony\Contracts\Translation\TranslatorTrait;
  *
  * As mentioned by chx http://drupal.org/node/1273968 we can cover all by testing number from 0 to 199
  *
- * The goal to cover all languages is to far fetched so this test case is smaller.
+ * The goal to cover all languages is too far fetched so this test case is smaller.
  *
  * @author Clemens Tolboom clemens@build2be.nl
  */
 class TranslatorTest extends TestCase
 {
-    public function getTranslator()
+    private string $defaultLocale;
+
+    protected function setUp(): void
     {
-        return new class() implements TranslatorInterface {
+        $this->defaultLocale = \Locale::getDefault();
+        \Locale::setDefault('en');
+    }
+
+    protected function tearDown(): void
+    {
+        \Locale::setDefault($this->defaultLocale);
+    }
+
+    public function getTranslator(): TranslatorInterface
+    {
+        return new class implements TranslatorInterface {
             use TranslatorTrait;
         };
     }
@@ -40,6 +56,7 @@ class TranslatorTest extends TestCase
     /**
      * @dataProvider getTransTests
      */
+    #[DataProvider('getTransTests')]
     public function testTrans($expected, $id, $parameters)
     {
         $translator = $this->getTranslator();
@@ -50,10 +67,24 @@ class TranslatorTest extends TestCase
     /**
      * @dataProvider getTransChoiceTests
      */
+    #[DataProvider('getTransChoiceTests')]
     public function testTransChoiceWithExplicitLocale($expected, $id, $number)
     {
         $translator = $this->getTranslator();
-        $translator->setLocale('en');
+
+        $this->assertEquals($expected, $translator->trans($id, ['%count%' => $number]));
+    }
+
+    /**
+     * @requires extension intl
+     *
+     * @dataProvider getTransChoiceTests
+     */
+    #[DataProvider('getTransChoiceTests')]
+    #[RequiresPhpExtension('intl')]
+    public function testTransChoiceWithDefaultLocale($expected, $id, $number)
+    {
+        $translator = $this->getTranslator();
 
         $this->assertEquals($expected, $translator->trans($id, ['%count%' => $number]));
     }
@@ -61,11 +92,11 @@ class TranslatorTest extends TestCase
     /**
      * @dataProvider getTransChoiceTests
      */
-    public function testTransChoiceWithDefaultLocale($expected, $id, $number)
+    #[DataProvider('getTransChoiceTests')]
+    public function testTransChoiceWithEnUsPosix($expected, $id, $number)
     {
-        \Locale::setDefault('en');
-
         $translator = $this->getTranslator();
+        $translator->setLocale('en_US_POSIX');
 
         $this->assertEquals($expected, $translator->trans($id, ['%count%' => $number]));
     }
@@ -73,7 +104,6 @@ class TranslatorTest extends TestCase
     public function testGetSetLocale()
     {
         $translator = $this->getTranslator();
-        $translator->setLocale('en');
 
         $this->assertEquals('en', $translator->getLocale());
     }
@@ -81,6 +111,7 @@ class TranslatorTest extends TestCase
     /**
      * @requires extension intl
      */
+    #[RequiresPhpExtension('intl')]
     public function testGetLocaleReturnsDefaultLocaleIfNotSet()
     {
         $translator = $this->getTranslator();
@@ -92,15 +123,17 @@ class TranslatorTest extends TestCase
         $this->assertEquals('en', $translator->getLocale());
     }
 
-    public function getTransTests()
+    public static function getTransTests()
     {
-        return [
-            ['Symfony is great!', 'Symfony is great!', []],
-            ['Symfony is awesome!', 'Symfony is %what%!', ['%what%' => 'awesome']],
-        ];
+        yield ['Symfony is great!', 'Symfony is great!', []];
+        yield ['Symfony is awesome!', 'Symfony is %what%!', ['%what%' => 'awesome']];
+
+        if (class_exists(TranslatableMessage::class)) {
+            yield ['He said "Symfony is awesome!".', 'He said "%what%".', ['%what%' => new TranslatableMessage('Symfony is %what%!', ['%what%' => 'awesome'])]];
+        }
     }
 
-    public function getTransChoiceTests()
+    public static function getTransChoiceTests()
     {
         return [
             ['There are no apples', '{0} There are no apples|{1} There is one apple|]1,Inf] There are %count% apples', 0],
@@ -115,8 +148,9 @@ class TranslatorTest extends TestCase
     }
 
     /**
-     * @dataProvider getInternal
+     * @dataProvider getInterval
      */
+    #[DataProvider('getInterval')]
     public function testInterval($expected, $number, $interval)
     {
         $translator = $this->getTranslator();
@@ -124,7 +158,7 @@ class TranslatorTest extends TestCase
         $this->assertEquals($expected, $translator->trans($interval.' foo|[1,Inf[ bar', ['%count%' => $number]));
     }
 
-    public function getInternal()
+    public static function getInterval()
     {
         return [
             ['foo', 3, '{1,2, 3 ,4}'],
@@ -142,11 +176,12 @@ class TranslatorTest extends TestCase
     /**
      * @dataProvider getChooseTests
      */
-    public function testChoose($expected, $id, $number)
+    #[DataProvider('getChooseTests')]
+    public function testChoose($expected, $id, $number, $locale = null)
     {
         $translator = $this->getTranslator();
 
-        $this->assertEquals($expected, $translator->trans($id, ['%count%' => $number]));
+        $this->assertEquals($expected, $translator->trans($id, ['%count%' => $number], null, $locale));
     }
 
     public function testReturnMessageIfExactlyOneStandardRuleIsGiven()
@@ -159,15 +194,17 @@ class TranslatorTest extends TestCase
     /**
      * @dataProvider getNonMatchingMessages
      */
+    #[DataProvider('getNonMatchingMessages')]
     public function testThrowExceptionIfMatchingMessageCannotBeFound($id, $number)
     {
-        $this->expectException('InvalidArgumentException');
         $translator = $this->getTranslator();
+
+        $this->expectException(\InvalidArgumentException::class);
 
         $translator->trans($id, ['%count%' => $number]);
     }
 
-    public function getNonMatchingMessages()
+    public static function getNonMatchingMessages()
     {
         return [
             ['{0} There are no apples|{1} There is one apple', 2],
@@ -177,7 +214,7 @@ class TranslatorTest extends TestCase
         ];
     }
 
-    public function getChooseTests()
+    public static function getChooseTests()
     {
         return [
             ['There are no apples', '{0} There are no apples|{1} There is one apple|]1,Inf] There are %count% apples', 0],
@@ -233,13 +270,13 @@ class TranslatorTest extends TestCase
             new-line in it. Selector = 0.|{1}This is a text with a
             new-line in it. Selector = 1.|[1,Inf]This is a text with a
             new-line in it. Selector > 1.', 5],
-            // with double-quotes and id split accros lines
+            // with double-quotes and id split across lines
             ['This is a text with a
             new-line in it. Selector = 1.', '{0}This is a text with a
             new-line in it. Selector = 0.|{1}This is a text with a
             new-line in it. Selector = 1.|[1,Inf]This is a text with a
             new-line in it. Selector > 1.', 1],
-            // with single-quotes and id split accros lines
+            // with single-quotes and id split across lines
             ['This is a text with a
             new-line in it. Selector > 1.', '{0}This is a text with a
             new-line in it. Selector = 0.|{1}This is a text with a
@@ -247,20 +284,33 @@ class TranslatorTest extends TestCase
             new-line in it. Selector > 1.', 5],
             // with single-quotes and \n in text
             ['This is a text with a\nnew-line in it. Selector = 0.', '{0}This is a text with a\nnew-line in it. Selector = 0.|{1}This is a text with a\nnew-line in it. Selector = 1.|[1,Inf]This is a text with a\nnew-line in it. Selector > 1.', 0],
-            // with double-quotes and id split accros lines
+            // with double-quotes and id split across lines
             ["This is a text with a\nnew-line in it. Selector = 1.", "{0}This is a text with a\nnew-line in it. Selector = 0.|{1}This is a text with a\nnew-line in it. Selector = 1.|[1,Inf]This is a text with a\nnew-line in it. Selector > 1.", 1],
-            // esacape pipe
+            // escape pipe
             ['This is a text with | in it. Selector = 0.', '{0}This is a text with || in it. Selector = 0.|{1}This is a text with || in it. Selector = 1.', 0],
             // Empty plural set (2 plural forms) from a .PO file
             ['', '|', 1],
             // Empty plural set (3 plural forms) from a .PO file
             ['', '||', 1],
+
+            // Floating values
+            ['1.5 liters', '%count% liter|%count% liters', 1.5],
+            ['1.5 litre', '%count% litre|%count% litres', 1.5, 'fr'],
+
+            // Negative values
+            ['-1 degree', '%count% degree|%count% degrees', -1],
+            ['-1 degré', '%count% degré|%count% degrés', -1],
+            ['-1.5 degrees', '%count% degree|%count% degrees', -1.5],
+            ['-1.5 degré', '%count% degré|%count% degrés', -1.5, 'fr'],
+            ['-2 degrees', '%count% degree|%count% degrees', -2],
+            ['-2 degrés', '%count% degré|%count% degrés', -2],
         ];
     }
 
     /**
      * @dataProvider failingLangcodes
      */
+    #[DataProvider('failingLangcodes')]
     public function testFailedLangcodes($nplural, $langCodes)
     {
         $matrix = $this->generateTestData($langCodes);
@@ -270,6 +320,7 @@ class TranslatorTest extends TestCase
     /**
      * @dataProvider successLangcodes
      */
+    #[DataProvider('successLangcodes')]
     public function testLangcodes($nplural, $langCodes)
     {
         $matrix = $this->generateTestData($langCodes);
@@ -280,14 +331,12 @@ class TranslatorTest extends TestCase
      * This array should contain all currently known langcodes.
      *
      * As it is impossible to have this ever complete we should try as hard as possible to have it almost complete.
-     *
-     * @return array
      */
-    public function successLangcodes()
+    public static function successLangcodes(): array
     {
         return [
             ['1', ['ay', 'bo', 'cgg', 'dz', 'id', 'ja', 'jbo', 'ka', 'kk', 'km', 'ko', 'ky']],
-            ['2', ['nl', 'fr', 'en', 'de', 'de_GE', 'hy', 'hy_AM']],
+            ['2', ['nl', 'fr', 'en', 'de', 'de_GE', 'hy', 'hy_AM', 'en_US_POSIX']],
             ['3', ['be', 'bs', 'cs', 'hr']],
             ['4', ['cy', 'mt', 'sl']],
             ['6', ['ar']],
@@ -300,9 +349,9 @@ class TranslatorTest extends TestCase
      * This both depends on a complete list trying to add above as understanding
      * the plural rules of the current failing languages.
      *
-     * @return array with nplural together with langcodes
+     * @return array With nplural together with langcodes
      */
-    public function failingLangcodes()
+    public static function failingLangcodes(): array
     {
         return [
             ['1', ['fa']],
@@ -316,25 +365,24 @@ class TranslatorTest extends TestCase
     /**
      * We validate only on the plural coverage. Thus the real rules is not tested.
      *
-     * @param string $nplural       Plural expected
-     * @param array  $matrix        Containing langcodes and their plural index values
-     * @param bool   $expectSuccess
+     * @param string $nplural Plural expected
+     * @param array  $matrix  Containing langcodes and their plural index values
      */
-    protected function validateMatrix($nplural, $matrix, $expectSuccess = true)
+    protected function validateMatrix(string $nplural, array $matrix, bool $expectSuccess = true)
     {
         foreach ($matrix as $langCode => $data) {
             $indexes = array_flip($data);
             if ($expectSuccess) {
-                $this->assertEquals($nplural, \count($indexes), "Langcode '$langCode' has '$nplural' plural forms.");
+                $this->assertCount($nplural, $indexes, "Langcode '$langCode' has '$nplural' plural forms.");
             } else {
-                $this->assertNotEquals((int) $nplural, \count($indexes), "Langcode '$langCode' has '$nplural' plural forms.");
+                $this->assertNotCount($nplural, $indexes, "Langcode '$langCode' has '$nplural' plural forms.");
             }
         }
     }
 
     protected function generateTestData($langCodes)
     {
-        $translator = new class() {
+        $translator = new class {
             use TranslatorTrait {
                 getPluralizationRule as public;
             }

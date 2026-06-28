@@ -3,7 +3,7 @@
 /*
  * This file is part of Psy Shell.
  *
- * (c) 2012-2018 Justin Hileman
+ * (c) 2012-2026 Justin Hileman
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -32,9 +32,9 @@ class KeywordsMatcher extends AbstractMatcher
     /**
      * Get all (completable) PHP keywords.
      *
-     * @return array
+     * @return string[]
      */
-    public function getKeywords()
+    public function getKeywords(): array
     {
         return $this->keywords;
     }
@@ -43,10 +43,8 @@ class KeywordsMatcher extends AbstractMatcher
      * Check whether $keyword is a (completable) PHP keyword.
      *
      * @param string $keyword
-     *
-     * @return bool
      */
-    public function isKeyword($keyword)
+    public function isKeyword(string $keyword): bool
     {
         return \in_array($keyword, $this->keywords);
     }
@@ -54,28 +52,26 @@ class KeywordsMatcher extends AbstractMatcher
     /**
      * {@inheritdoc}
      */
-    public function getMatches(array $tokens, array $info = [])
+    public function getMatches(array $tokens, array $info = []): array
     {
         $input = $this->getInput($tokens);
 
-        return \array_filter($this->keywords, function ($keyword) use ($input) {
-            return AbstractMatcher::startsWith($input, $keyword);
-        });
+        return \array_filter($this->keywords, fn ($keyword) => AbstractMatcher::startsWith($input, $keyword));
     }
 
     /**
      * {@inheritdoc}
      */
-    public function hasMatched(array $tokens)
+    public function hasMatched(array $tokens): bool
     {
-        $token     = \array_pop($tokens);
+        $token = \array_pop($tokens);
         $prevToken = \array_pop($tokens);
 
         switch (true) {
             case self::hasToken([self::T_OPEN_TAG, self::T_VARIABLE], $token):
 //            case is_string($token) && $token === '$':
             case self::hasToken([self::T_OPEN_TAG, self::T_VARIABLE], $prevToken) &&
-                self::tokenIs($token, self::T_STRING):
+            self::tokenIs($token, self::T_STRING):
             case self::isOperator($token):
                 return true;
         }

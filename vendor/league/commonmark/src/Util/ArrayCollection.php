@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the league/commonmark package.
  *
@@ -17,18 +19,25 @@ namespace League\CommonMark\Util;
  * Provides a wrapper around a standard PHP array.
  *
  * @internal
+ *
+ * @phpstan-template T
+ * @phpstan-implements \IteratorAggregate<int, T>
+ * @phpstan-implements \ArrayAccess<int, T>
  */
-class ArrayCollection implements \IteratorAggregate, \Countable, \ArrayAccess
+final class ArrayCollection implements \IteratorAggregate, \Countable, \ArrayAccess
 {
     /**
-     * @var array
+     * @var array<int, mixed>
+     * @phpstan-var array<int, T>
      */
-    private $elements;
+    private array $elements;
 
     /**
      * Constructor
      *
-     * @param array $elements
+     * @param array<int|string, mixed> $elements
+     *
+     * @phpstan-param array<int, T> $elements
      */
     public function __construct(array $elements = [])
     {
@@ -36,7 +45,9 @@ class ArrayCollection implements \IteratorAggregate, \Countable, \ArrayAccess
     }
 
     /**
-     * @return mixed
+     * @return mixed|false
+     *
+     * @phpstan-return T|false
      */
     public function first()
     {
@@ -44,7 +55,9 @@ class ArrayCollection implements \IteratorAggregate, \Countable, \ArrayAccess
     }
 
     /**
-     * @return mixed
+     * @return mixed|false
+     *
+     * @phpstan-return T|false
      */
     public function last()
     {
@@ -54,97 +67,14 @@ class ArrayCollection implements \IteratorAggregate, \Countable, \ArrayAccess
     /**
      * Retrieve an external iterator
      *
-     * @return \ArrayIterator
+     * @return \ArrayIterator<int, mixed>
+     *
+     * @phpstan-return \ArrayIterator<int, T>
      */
-    public function getIterator()
+    #[\ReturnTypeWillChange]
+    public function getIterator(): \ArrayIterator
     {
         return new \ArrayIterator($this->elements);
-    }
-
-    /**
-     * @param mixed $element
-     *
-     * @return bool
-     */
-    public function add($element): bool
-    {
-        $this->elements[] = $element;
-
-        return true;
-    }
-
-    /**
-     * @param mixed $key
-     * @param mixed $value
-     */
-    public function set($key, $value)
-    {
-        $this->elements[$key] = $value;
-    }
-
-    /**
-     * @param mixed $key
-     *
-     * @return mixed
-     */
-    public function get($key)
-    {
-        return isset($this->elements[$key]) ? $this->elements[$key] : null;
-    }
-
-    /**
-     * @param mixed $key
-     *
-     * @return mixed|null
-     */
-    public function remove($key)
-    {
-        if (!\array_key_exists($key, $this->elements)) {
-            return;
-        }
-
-        $removed = $this->elements[$key];
-        unset($this->elements[$key]);
-
-        return $removed;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isEmpty(): bool
-    {
-        return empty($this->elements);
-    }
-
-    /**
-     * @param mixed $element
-     *
-     * @return bool
-     */
-    public function contains($element): bool
-    {
-        return \in_array($element, $this->elements, true);
-    }
-
-    /**
-     * @param mixed $element
-     *
-     * @return mixed|false
-     */
-    public function indexOf($element)
-    {
-        return \array_search($element, $this->elements, true);
-    }
-
-    /**
-     * @param mixed $key
-     *
-     * @return bool
-     */
-    public function containsKey($key): bool
-    {
-        return \array_key_exists($key, $this->elements);
     }
 
     /**
@@ -160,63 +90,71 @@ class ArrayCollection implements \IteratorAggregate, \Countable, \ArrayAccess
     /**
      * Whether an offset exists
      *
-     * @param mixed $offset An offset to check for.
+     * {@inheritDoc}
      *
-     * @return bool true on success or false on failure.
+     * @phpstan-param int $offset
      */
     public function offsetExists($offset): bool
     {
-        return $this->containsKey($offset);
+        return \array_key_exists($offset, $this->elements);
     }
 
     /**
      * Offset to retrieve
      *
-     * @param mixed $offset The offset to retrieve.
+     * {@inheritDoc}
      *
-     * @return mixed
+     * @phpstan-param int $offset
+     *
+     * @phpstan-return T|null
      */
+    #[\ReturnTypeWillChange]
     public function offsetGet($offset)
     {
-        return $this->get($offset);
+        return $this->elements[$offset] ?? null;
     }
 
     /**
      * Offset to set
      *
-     * @param mixed $offset The offset to assign the value to.
-     * @param mixed $value  The value to set.
+     * {@inheritDoc}
      *
-     * @return void
+     * @phpstan-param int|null $offset
+     * @phpstan-param T        $value
      */
-    public function offsetSet($offset, $value)
+    #[\ReturnTypeWillChange]
+    public function offsetSet($offset, $value): void
     {
         if ($offset === null) {
-            $this->add($value);
+            $this->elements[] = $value;
         } else {
-            $this->set($offset, $value);
+            $this->elements[$offset] = $value;
         }
     }
 
     /**
      * Offset to unset
      *
-     * @param mixed $offset The offset to unset.
+     * {@inheritDoc}
      *
-     * @return void
+     * @phpstan-param int $offset
      */
-    public function offsetUnset($offset)
+    #[\ReturnTypeWillChange]
+    public function offsetUnset($offset): void
     {
-        $this->remove($offset);
+        if (! \array_key_exists($offset, $this->elements)) {
+            return;
+        }
+
+        unset($this->elements[$offset]);
     }
 
     /**
      * Returns a subset of the array
      *
-     * @param int      $offset
-     * @param int|null $length
+     * @return array<int, mixed>
      *
-     * @return array
+     * @phpstan-return array<int, T>
      */
     public function slice(int $offset, ?int $length = null): array
     {
@@ -224,27 +162,12 @@ class ArrayCollection implements \IteratorAggregate, \Countable, \ArrayAccess
     }
 
     /**
-     * @return array
+     * @return array<int, mixed>
+     *
+     * @phpstan-return array<int, T>
      */
     public function toArray(): array
     {
         return $this->elements;
-    }
-
-    /**
-     * @param array $elements
-     *
-     * @return $this
-     */
-    public function replaceWith(array $elements)
-    {
-        $this->elements = $elements;
-
-        return $this;
-    }
-
-    public function removeGaps()
-    {
-        $this->elements = \array_filter($this->elements);
     }
 }

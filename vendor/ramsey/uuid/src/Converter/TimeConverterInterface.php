@@ -1,4 +1,5 @@
 <?php
+
 /**
  * This file is part of the ramsey/uuid library
  *
@@ -7,31 +8,46 @@
  *
  * @copyright Copyright (c) Ben Ramsey <ben@benramsey.com>
  * @license http://opensource.org/licenses/MIT MIT
- * @link https://benramsey.com/projects/ramsey-uuid/ Documentation
- * @link https://packagist.org/packages/ramsey/uuid Packagist
- * @link https://github.com/ramsey/uuid GitHub
  */
+
+declare(strict_types=1);
 
 namespace Ramsey\Uuid\Converter;
 
-use Ramsey\Uuid\Exception\UnsatisfiedDependencyException;
+use Ramsey\Uuid\Type\Hexadecimal;
+use Ramsey\Uuid\Type\Time;
 
 /**
- * TimeConverterInterface provides facilities for converting parts of time into
- * representations that may be used in UUIDs
+ * A time converter converts timestamps into representations that may be used in UUIDs
+ *
+ * @immutable
  */
 interface TimeConverterInterface
 {
     /**
-     * Uses the provided seconds and micro-seconds to calculate the time_low,
-     * time_mid, and time_high fields used by RFC 4122 version 1 UUIDs
+     * Uses the provided seconds and micro-seconds to calculate the count of 100-nanosecond intervals since
+     * UTC 00:00:00.00, 15 October 1582, for RFC 9562 (formerly RFC 4122) variant UUIDs
      *
-     * @param string $seconds
-     * @param string $microSeconds
-     * @return string[] An array guaranteed to contain `low`, `mid`, and `high` keys
-     * @throws UnsatisfiedDependencyException if called on a 32-bit system and
-     *     `Moontoast\Math\BigNumber` is not present
-     * @link http://tools.ietf.org/html/rfc4122#section-4.2.2
+     * @link https://www.rfc-editor.org/rfc/rfc9562#appendix-A RFC 9562, Appendix A. Test Vectors
+     *
+     * @param string $seconds A string representation of seconds since the Unix epoch for the time to calculate
+     * @param string $microseconds A string representation of the micro-seconds associated with the time to calculate
+     *
+     * @return Hexadecimal The full UUID timestamp as a Hexadecimal value
+     *
+     * @pure
      */
-    public function calculateTime($seconds, $microSeconds);
+    public function calculateTime(string $seconds, string $microseconds): Hexadecimal;
+
+    /**
+     * Converts a timestamp extracted from a UUID to a Unix timestamp
+     *
+     * @param Hexadecimal $uuidTimestamp A hexadecimal representation of a UUID timestamp; a UUID timestamp is a count
+     *     of 100-nanosecond intervals since UTC 00:00:00.00, 15 October 1582.
+     *
+     * @return Time An instance of {@see Time}
+     *
+     * @pure
+     */
+    public function convertTime(Hexadecimal $uuidTimestamp): Time;
 }

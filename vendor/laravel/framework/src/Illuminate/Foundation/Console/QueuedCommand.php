@@ -37,6 +37,16 @@ class QueuedCommand implements ShouldQueue
      */
     public function handle(KernelContract $kernel)
     {
-        call_user_func_array([$kernel, 'call'], $this->data);
+        $kernel->call(...array_values($this->data));
+    }
+
+    /**
+     * Get the display name for the queued job.
+     *
+     * @return string
+     */
+    public function displayName()
+    {
+        return array_values($this->data)[0];
     }
 }

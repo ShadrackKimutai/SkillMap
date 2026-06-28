@@ -52,6 +52,8 @@ class RouteBinding
      * @param  string  $class
      * @param  \Closure|null  $callback
      * @return \Closure
+     *
+     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException<\Illuminate\Database\Eloquent\Model>
      */
     public static function forModel($container, $class, $callback = null)
     {

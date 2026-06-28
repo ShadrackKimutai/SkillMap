@@ -1,58 +1,42 @@
 <?php
 
-/**
- * This file is part of Collision.
- *
- * (c) Nuno Maduro <enunomaduro@gmail.com>
- *
- *  For the full copyright and license information, please view the LICENSE
- *  file that was distributed with this source code.
- */
+declare(strict_types=1);
 
 namespace NunoMaduro\Collision;
 
 use Whoops\Run;
 use Whoops\RunInterface;
-use NunoMaduro\Collision\Contracts\Handler as HandlerContract;
-use NunoMaduro\Collision\Contracts\Provider as ProviderContract;
 
 /**
- * This is an Collision Provider implementation.
+ * @internal
  *
- * @author Nuno Maduro <enunomaduro@gmail.com>
+ * @see \Tests\Unit\ProviderTest
  */
-class Provider implements ProviderContract
+final class Provider
 {
     /**
      * Holds an instance of the Run.
-     *
-     * @var \Whoops\RunInterface
      */
-    protected $run;
+    private RunInterface $run;
 
     /**
      * Holds an instance of the handler.
-     *
-     * @var \NunoMaduro\Collision\Contracts\Handler
      */
-    protected $handler;
+    private Handler $handler;
 
     /**
      * Creates a new instance of the Provider.
-     *
-     * @param \Whoops\RunInterface|null $run
-     * @param \NunoMaduro\Collision\Contracts\Handler|null $handler
      */
-    public function __construct(RunInterface $run = null, HandlerContract $handler = null)
+    public function __construct(?RunInterface $run = null, ?Handler $handler = null)
     {
         $this->run = $run ?: new Run;
         $this->handler = $handler ?: new Handler;
     }
 
     /**
-     * {@inheritdoc}
+     * Registers the current Handler as Error Handler.
      */
-    public function register(): ProviderContract
+    public function register(): self
     {
         $this->run->pushHandler($this->handler)
             ->register();
@@ -61,9 +45,9 @@ class Provider implements ProviderContract
     }
 
     /**
-     * {@inheritdoc}
+     * Returns the handler.
      */
-    public function getHandler(): HandlerContract
+    public function getHandler(): Handler
     {
         return $this->handler;
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the league/commonmark package.
  *
@@ -14,77 +16,41 @@
 
 namespace League\CommonMark\Delimiter;
 
-use League\CommonMark\Inline\Element\AbstractStringContainer;
+use League\CommonMark\Node\Inline\AbstractStringContainer;
 
 interface DelimiterInterface
 {
-    /**
-     * @return bool
-     */
     public function canClose(): bool;
 
-    /**
-     * @return bool
-     */
     public function canOpen(): bool;
 
     /**
-     * @return bool
+     * @deprecated This method is no longer used internally and will be removed in 3.0
      */
     public function isActive(): bool;
 
     /**
-     * @param bool $active
+     * @deprecated This method is no longer used internally and will be removed in 3.0
      */
-    public function setActive(bool $active);
+    public function setActive(bool $active): void;
 
-    /**
-     * @return string
-     */
     public function getChar(): string;
 
-    /**
-     * @return int|null
-     */
     public function getIndex(): ?int;
 
-    /**
-     * @return DelimiterInterface|null
-     */
     public function getNext(): ?DelimiterInterface;
 
-    /**
-     * @param DelimiterInterface|null $next
-     */
-    public function setNext(?DelimiterInterface $next);
+    public function setNext(?DelimiterInterface $next): void;
 
-    /**
-     * @return int
-     */
     public function getLength(): int;
 
-    /**
-     * @param int $length
-     */
-    public function setLength(int $length);
+    public function setLength(int $length): void;
 
-    /**
-     * @return int
-     */
     public function getOriginalLength(): int;
 
-    /**
-     * @return AbstractStringContainer
-     */
     public function getInlineNode(): AbstractStringContainer;
 
-    /**
-     * @return DelimiterInterface|null
-     */
     public function getPrevious(): ?DelimiterInterface;
 
-    /**
-     * @param DelimiterInterface|null $previous
-     */
-    public function setPrevious(?DelimiterInterface $previous);
+    public function setPrevious(?DelimiterInterface $previous): void;
 }

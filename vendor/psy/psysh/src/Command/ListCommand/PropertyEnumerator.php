@@ -3,7 +3,7 @@
 /*
  * This file is part of Psy Shell.
  *
- * (c) 2012-2018 Justin Hileman
+ * (c) 2012-2026 Justin Hileman
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -11,6 +11,8 @@
 
 namespace Psy\Command\ListCommand;
 
+use Psy\Reflection\ReflectionMagicProperty;
+use Psy\Util\Docblock;
 use Symfony\Component\Console\Input\InputInterface;
 
 /**
@@ -21,30 +23,30 @@ class PropertyEnumerator extends Enumerator
     /**
      * {@inheritdoc}
      */
-    protected function listItems(InputInterface $input, \Reflector $reflector = null, $target = null)
+    protected function listItems(InputInterface $input, ?\Reflector $reflector = null, $target = null): array
     {
         // only list properties when a Reflector is present.
 
         if ($reflector === null) {
-            return;
+            return [];
         }
 
         // We can only list properties on actual class (or object) reflectors.
         if (!$reflector instanceof \ReflectionClass) {
-            return;
+            return [];
         }
 
         // only list properties if we are specifically asked
         if (!$input->getOption('properties')) {
-            return;
+            return [];
         }
 
-        $showAll    = $input->getOption('all');
-        $noInherit  = $input->getOption('no-inherit');
+        $showAll = $input->getOption('all');
+        $noInherit = $input->getOption('no-inherit');
         $properties = $this->prepareProperties($this->getProperties($showAll, $reflector, $noInherit), $target);
 
         if (empty($properties)) {
-            return;
+            return [];
         }
 
         $ret = [];
@@ -56,13 +58,13 @@ class PropertyEnumerator extends Enumerator
     /**
      * Get defined properties for the given class or object Reflector.
      *
-     * @param bool       $showAll   Include private and protected properties
-     * @param \Reflector $reflector
-     * @param bool       $noInherit Exclude inherited properties
+     * @param bool             $showAll   Include private and protected properties
+     * @param \ReflectionClass $reflector
+     * @param bool             $noInherit Exclude inherited properties
      *
-     * @return array
+     * @return \ReflectionProperty[]
      */
-    protected function getProperties($showAll, \Reflector $reflector, $noInherit = false)
+    protected function getProperties(bool $showAll, \ReflectionClass $reflector, bool $noInherit = false): array
     {
         $className = $reflector->getName();
 
@@ -77,7 +79,19 @@ class PropertyEnumerator extends Enumerator
             }
         }
 
-        \ksort($properties, SORT_NATURAL | SORT_FLAG_CASE);
+        // Add magic properties from docblock @property tags
+        foreach (Docblock::getMagicProperties($reflector) as $property) {
+            if ($noInherit && $property->getDeclaringClass()->getName() !== $className) {
+                continue;
+            }
+
+            // Skip if a real property with this name already exists
+            if (!isset($properties[$property->getName()])) {
+                $properties[$property->getName()] = $property;
+            }
+        }
+
+        \ksort($properties, \SORT_NATURAL | \SORT_FLAG_CASE);
 
         return $properties;
     }
@@ -85,18 +99,18 @@ class PropertyEnumerator extends Enumerator
     /**
      * Prepare formatted property array.
      *
-     * @param array $properties
+     * @param \ReflectionProperty[] $properties
      *
      * @return array
      */
-    protected function prepareProperties(array $properties, $target = null)
+    protected function prepareProperties(array $properties, $target = null): array
     {
         // My kingdom for a generator.
         $ret = [];
 
         foreach ($properties as $name => $property) {
             if ($this->showItem($name)) {
-                $fname = '$' . $name;
+                $fname = '$'.$name;
                 $ret[$fname] = [
                     'name'  => $fname,
                     'style' => $this->getVisibilityStyle($property),
@@ -112,14 +126,10 @@ class PropertyEnumerator extends Enumerator
      * Get a label for the particular kind of "class" represented.
      *
      * @param \ReflectionClass $reflector
-     *
-     * @return string
      */
-    protected function getKindLabel(\ReflectionClass $reflector)
+    protected function getKindLabel(\ReflectionClass $reflector): string
     {
-        if ($reflector->isInterface()) {
-            return 'Interface Properties';
-        } elseif (\method_exists($reflector, 'isTrait') && $reflector->isTrait()) {
+        if (\method_exists($reflector, 'isTrait') && $reflector->isTrait()) {
             return 'Trait Properties';
         } else {
             return 'Class Properties';
@@ -129,12 +139,14 @@ class PropertyEnumerator extends Enumerator
     /**
      * Get output style for the given property's visibility.
      *
-     * @param \ReflectionProperty $property
-     *
-     * @return string
+     * @param \ReflectionProperty|ReflectionMagicProperty $property
      */
-    private function getVisibilityStyle(\ReflectionProperty $property)
+    private function getVisibilityStyle(\Reflector $property): string
     {
+        if ($property instanceof ReflectionMagicProperty) {
+            return self::IS_VIRTUAL;
+        }
+
         if ($property->isPublic()) {
             return self::IS_PUBLIC;
         } elseif ($property->isProtected()) {
@@ -147,14 +159,21 @@ class PropertyEnumerator extends Enumerator
     /**
      * Present the $target's current value for a reflection property.
      *
-     * @param \ReflectionProperty $property
-     * @param mixed               $target
-     *
-     * @return string
+     * @param \ReflectionProperty|ReflectionMagicProperty $property
+     * @param mixed                                       $target
      */
-    protected function presentValue(\ReflectionProperty $property, $target)
+    protected function presentValue(\Reflector $property, $target): string
     {
-        // If $target is a class, trait or interface (try to) get the default
+        // Magic properties use SignatureFormatter for display
+        if ($property instanceof ReflectionMagicProperty) {
+            return $this->presentSignature($property);
+        }
+
+        if (!$target) {
+            return '';
+        }
+
+        // If $target is a class or trait (try to) get the default
         // value for the property.
         if (!\is_object($target)) {
             try {
@@ -163,16 +182,18 @@ class PropertyEnumerator extends Enumerator
                 if (\array_key_exists($property->name, $props)) {
                     $suffix = $property->isStatic() ? '' : ' <aside>(default)</aside>';
 
-                    return $this->presentRef($props[$property->name]) . $suffix;
+                    return $this->presentRef($props[$property->name]).$suffix;
                 }
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 // Well, we gave it a shot.
             }
 
             return '';
         }
 
-        $property->setAccessible(true);
+        if (\PHP_VERSION_ID < 80100) {
+            $property->setAccessible(true);
+        }
         $value = $property->getValue($target);
 
         return $this->presentRef($value);

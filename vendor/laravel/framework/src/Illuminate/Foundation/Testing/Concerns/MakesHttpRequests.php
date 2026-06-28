@@ -3,9 +3,10 @@
 namespace Illuminate\Foundation\Testing\Concerns;
 
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
-use Illuminate\Foundation\Testing\TestResponse;
+use Illuminate\Cookie\CookieValuePrefix;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use Illuminate\Testing\LoggedExceptionCollection;
+use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\File\UploadedFile as SymfonyUploadedFile;
 use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
 
@@ -24,6 +25,13 @@ trait MakesHttpRequests
      * @var array
      */
     protected $defaultCookies = [];
+
+    /**
+     * Additional cookies will not be encrypted for the request.
+     *
+     * @var array
+     */
+    protected $unencryptedCookies = [];
 
     /**
      * Additional server variables for the request.
@@ -45,6 +53,22 @@ trait MakesHttpRequests
      * @var bool
      */
     protected $encryptCookies = true;
+
+    /**
+     * Indicated whether JSON requests should be performed "with credentials" (cookies).
+     *
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/withCredentials
+     *
+     * @var bool
+     */
+    protected $withCredentials = false;
+
+    /**
+     * The latest test response (if any).
+     *
+     * @var \Illuminate\Testing\TestResponse|null
+     */
+    public static $latestResponse;
 
     /**
      * Define additional headers to be sent with the request.
@@ -69,6 +93,42 @@ trait MakesHttpRequests
     public function withHeader(string $name, string $value)
     {
         $this->defaultHeaders[$name] = $value;
+
+        return $this;
+    }
+
+    /**
+     * Add an authorization token for the request.
+     *
+     * @param  string  $token
+     * @param  string  $type
+     * @return $this
+     */
+    public function withToken(string $token, string $type = 'Bearer')
+    {
+        return $this->withHeader('Authorization', $type.' '.$token);
+    }
+
+    /**
+     * Add a basic authentication header to the request with the given credentials.
+     *
+     * @param  string  $username
+     * @param  string  $password
+     * @return $this
+     */
+    public function withBasicAuth(string $username, string $password)
+    {
+        return $this->withToken(base64_encode("$username:$password"), 'Basic');
+    }
+
+    /**
+     * Remove the authorization token from the request.
+     *
+     * @return $this
+     */
+    public function withoutToken()
+    {
+        unset($this->defaultHeaders['Authorization']);
 
         return $this;
     }
@@ -113,7 +173,8 @@ trait MakesHttpRequests
         }
 
         foreach ((array) $middleware as $abstract) {
-            $this->app->instance($abstract, new class {
+            $this->app->instance($abstract, new class
+            {
                 public function handle($request, $next)
                 {
                     return $next($request);
@@ -173,6 +234,33 @@ trait MakesHttpRequests
     }
 
     /**
+     * Define additional cookies will not be encrypted before sending with the request.
+     *
+     * @param  array  $cookies
+     * @return $this
+     */
+    public function withUnencryptedCookies(array $cookies)
+    {
+        $this->unencryptedCookies = array_merge($this->unencryptedCookies, $cookies);
+
+        return $this;
+    }
+
+    /**
+     * Add a cookie will not be encrypted before sending with the request.
+     *
+     * @param  string  $name
+     * @param  string  $value
+     * @return $this
+     */
+    public function withUnencryptedCookie(string $name, string $value)
+    {
+        $this->unencryptedCookies[$name] = $value;
+
+        return $this;
+    }
+
+    /**
      * Automatically follow any redirects returned from the response.
      *
      * @return $this
@@ -180,6 +268,18 @@ trait MakesHttpRequests
     public function followingRedirects()
     {
         $this->followRedirects = true;
+
+        return $this;
+    }
+
+    /**
+     * Include cookies and authorization headers for JSON requests.
+     *
+     * @return $this
+     */
+    public function withCredentials()
+    {
+        $this->withCredentials = true;
 
         return $this;
     }
@@ -197,7 +297,7 @@ trait MakesHttpRequests
     }
 
     /**
-     * Set the referer header and previous URL session value in order to simulate a previous request.
+     * Set the referer header and previous URL session value from a given URL in order to simulate a previous request.
      *
      * @param  string  $url
      * @return $this
@@ -210,11 +310,33 @@ trait MakesHttpRequests
     }
 
     /**
+     * Set the referer header and previous URL session value from a given route in order to simulate a previous request.
+     *
+     * @param  string  $name
+     * @param  mixed  $parameters
+     * @return $this
+     */
+    public function fromRoute(string $name, $parameters = [])
+    {
+        return $this->from($this->app['url']->route($name, $parameters));
+    }
+
+    /**
+     * Set the Precognition header to "true".
+     *
+     * @return $this
+     */
+    public function withPrecognition()
+    {
+        return $this->withHeader('Precognition', 'true');
+    }
+
+    /**
      * Visit the given URI with a GET request.
      *
      * @param  string  $uri
      * @param  array  $headers
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @return \Illuminate\Testing\TestResponse
      */
     public function get($uri, array $headers = [])
     {
@@ -229,11 +351,12 @@ trait MakesHttpRequests
      *
      * @param  string  $uri
      * @param  array  $headers
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @param  int  $options
+     * @return \Illuminate\Testing\TestResponse
      */
-    public function getJson($uri, array $headers = [])
+    public function getJson($uri, array $headers = [], $options = 0)
     {
-        return $this->json('GET', $uri, [], $headers);
+        return $this->json('GET', $uri, [], $headers, $options);
     }
 
     /**
@@ -242,7 +365,7 @@ trait MakesHttpRequests
      * @param  string  $uri
      * @param  array  $data
      * @param  array  $headers
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @return \Illuminate\Testing\TestResponse
      */
     public function post($uri, array $data = [], array $headers = [])
     {
@@ -258,11 +381,12 @@ trait MakesHttpRequests
      * @param  string  $uri
      * @param  array  $data
      * @param  array  $headers
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @param  int  $options
+     * @return \Illuminate\Testing\TestResponse
      */
-    public function postJson($uri, array $data = [], array $headers = [])
+    public function postJson($uri, array $data = [], array $headers = [], $options = 0)
     {
-        return $this->json('POST', $uri, $data, $headers);
+        return $this->json('POST', $uri, $data, $headers, $options);
     }
 
     /**
@@ -271,7 +395,7 @@ trait MakesHttpRequests
      * @param  string  $uri
      * @param  array  $data
      * @param  array  $headers
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @return \Illuminate\Testing\TestResponse
      */
     public function put($uri, array $data = [], array $headers = [])
     {
@@ -287,11 +411,12 @@ trait MakesHttpRequests
      * @param  string  $uri
      * @param  array  $data
      * @param  array  $headers
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @param  int  $options
+     * @return \Illuminate\Testing\TestResponse
      */
-    public function putJson($uri, array $data = [], array $headers = [])
+    public function putJson($uri, array $data = [], array $headers = [], $options = 0)
     {
-        return $this->json('PUT', $uri, $data, $headers);
+        return $this->json('PUT', $uri, $data, $headers, $options);
     }
 
     /**
@@ -300,7 +425,7 @@ trait MakesHttpRequests
      * @param  string  $uri
      * @param  array  $data
      * @param  array  $headers
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @return \Illuminate\Testing\TestResponse
      */
     public function patch($uri, array $data = [], array $headers = [])
     {
@@ -316,11 +441,12 @@ trait MakesHttpRequests
      * @param  string  $uri
      * @param  array  $data
      * @param  array  $headers
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @param  int  $options
+     * @return \Illuminate\Testing\TestResponse
      */
-    public function patchJson($uri, array $data = [], array $headers = [])
+    public function patchJson($uri, array $data = [], array $headers = [], $options = 0)
     {
-        return $this->json('PATCH', $uri, $data, $headers);
+        return $this->json('PATCH', $uri, $data, $headers, $options);
     }
 
     /**
@@ -329,7 +455,7 @@ trait MakesHttpRequests
      * @param  string  $uri
      * @param  array  $data
      * @param  array  $headers
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @return \Illuminate\Testing\TestResponse
      */
     public function delete($uri, array $data = [], array $headers = [])
     {
@@ -345,40 +471,59 @@ trait MakesHttpRequests
      * @param  string  $uri
      * @param  array  $data
      * @param  array  $headers
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @param  int  $options
+     * @return \Illuminate\Testing\TestResponse
      */
-    public function deleteJson($uri, array $data = [], array $headers = [])
+    public function deleteJson($uri, array $data = [], array $headers = [], $options = 0)
     {
-        return $this->json('DELETE', $uri, $data, $headers);
+        return $this->json('DELETE', $uri, $data, $headers, $options);
     }
 
     /**
-     * Visit the given URI with a OPTIONS request.
+     * Visit the given URI with an OPTIONS request.
      *
      * @param  string  $uri
      * @param  array  $data
      * @param  array  $headers
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @return \Illuminate\Testing\TestResponse
      */
     public function options($uri, array $data = [], array $headers = [])
     {
         $server = $this->transformHeadersToServerVars($headers);
+
         $cookies = $this->prepareCookiesForRequest();
 
         return $this->call('OPTIONS', $uri, $data, $cookies, [], $server);
     }
 
     /**
-     * Visit the given URI with a OPTIONS request, expecting a JSON response.
+     * Visit the given URI with an OPTIONS request, expecting a JSON response.
      *
      * @param  string  $uri
      * @param  array  $data
      * @param  array  $headers
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @param  int  $options
+     * @return \Illuminate\Testing\TestResponse
      */
-    public function optionsJson($uri, array $data = [], array $headers = [])
+    public function optionsJson($uri, array $data = [], array $headers = [], $options = 0)
     {
-        return $this->json('OPTIONS', $uri, $data, $headers);
+        return $this->json('OPTIONS', $uri, $data, $headers, $options);
+    }
+
+    /**
+     * Visit the given URI with a HEAD request.
+     *
+     * @param  string  $uri
+     * @param  array  $headers
+     * @return \Illuminate\Testing\TestResponse
+     */
+    public function head($uri, array $headers = [])
+    {
+        $server = $this->transformHeadersToServerVars($headers);
+
+        $cookies = $this->prepareCookiesForRequest();
+
+        return $this->call('HEAD', $uri, [], $cookies, [], $server);
     }
 
     /**
@@ -388,13 +533,14 @@ trait MakesHttpRequests
      * @param  string  $uri
      * @param  array  $data
      * @param  array  $headers
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @param  int  $options
+     * @return \Illuminate\Testing\TestResponse
      */
-    public function json($method, $uri, array $data = [], array $headers = [])
+    public function json($method, $uri, array $data = [], array $headers = [], $options = 0)
     {
         $files = $this->extractFilesFromDataArray($data);
 
-        $content = json_encode($data);
+        $content = json_encode($data, $options);
 
         $headers = array_merge([
             'CONTENT_LENGTH' => mb_strlen($content, '8bit'),
@@ -403,7 +549,13 @@ trait MakesHttpRequests
         ], $headers);
 
         return $this->call(
-            $method, $uri, [], [], $files, $this->transformHeadersToServerVars($headers), $content
+            $method,
+            $uri,
+            [],
+            $this->prepareCookiesForJsonRequest(),
+            $files,
+            $this->transformHeadersToServerVars($headers),
+            $content
         );
     }
 
@@ -417,7 +569,7 @@ trait MakesHttpRequests
      * @param  array  $files
      * @param  array  $server
      * @param  string|null  $content
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @return \Illuminate\Testing\TestResponse
      */
     public function call($method, $uri, $parameters = [], $cookies = [], $files = [], $server = [], $content = null)
     {
@@ -431,16 +583,16 @@ trait MakesHttpRequests
         );
 
         $response = $kernel->handle(
-            $request = Request::createFromBase($symfonyRequest)
+            $request = $this->createTestRequest($symfonyRequest)
         );
+
+        $kernel->terminate($request, $response);
 
         if ($this->followRedirects) {
             $response = $this->followRedirects($response);
         }
 
-        $kernel->terminate($request, $response);
-
-        return $this->createTestResponse($response);
+        return static::$latestResponse = $this->createTestResponse($response);
     }
 
     /**
@@ -451,15 +603,11 @@ trait MakesHttpRequests
      */
     protected function prepareUrlForRequest($uri)
     {
-        if (Str::startsWith($uri, '/')) {
+        if (str_starts_with($uri, '/')) {
             $uri = substr($uri, 1);
         }
 
-        if (! Str::startsWith($uri, 'http')) {
-            $uri = config('app.url').'/'.$uri;
-        }
-
-        return trim($uri, '/');
+        return trim(url($uri), '/');
     }
 
     /**
@@ -485,7 +633,7 @@ trait MakesHttpRequests
      */
     protected function formatServerHeaderKey($name)
     {
-        if (! Str::startsWith($name, 'HTTP_') && $name !== 'CONTENT_TYPE' && $name !== 'REMOTE_ADDR') {
+        if (! str_starts_with($name, 'HTTP_') && $name !== 'CONTENT_TYPE' && $name !== 'REMOTE_ADDR') {
             return 'HTTP_'.$name;
         }
 
@@ -527,39 +675,66 @@ trait MakesHttpRequests
     protected function prepareCookiesForRequest()
     {
         if (! $this->encryptCookies) {
-            return $this->defaultCookies;
+            return array_merge($this->defaultCookies, $this->unencryptedCookies);
         }
 
-        return collect($this->defaultCookies)->map(function ($value) {
-            return encrypt($value, false);
-        })->all();
+        return collect($this->defaultCookies)->map(function ($value, $key) {
+            return encrypt(CookieValuePrefix::create($key, app('encrypter')->getKey()).$value, false);
+        })->merge($this->unencryptedCookies)->all();
+    }
+
+    /**
+     * If enabled, add cookies for JSON requests.
+     *
+     * @return array
+     */
+    protected function prepareCookiesForJsonRequest()
+    {
+        return $this->withCredentials ? $this->prepareCookiesForRequest() : [];
     }
 
     /**
      * Follow a redirect chain until a non-redirect is received.
      *
-     * @param  \Illuminate\Http\Response  $response
-     * @return \Illuminate\Http\Response|\Illuminate\Foundation\Testing\TestResponse
+     * @param  \Illuminate\Http\Response|\Illuminate\Testing\TestResponse  $response
+     * @return \Illuminate\Http\Response|\Illuminate\Testing\TestResponse
      */
     protected function followRedirects($response)
     {
+        $this->followRedirects = false;
+
         while ($response->isRedirect()) {
             $response = $this->get($response->headers->get('Location'));
         }
 
-        $this->followRedirects = false;
-
         return $response;
+    }
+
+    /**
+     * Create the request instance used for testing from the given Symfony request.
+     *
+     * @param  \Symfony\Component\HttpFoundation\Request  $symfonyRequest
+     * @return \Illuminate\Http\Request
+     */
+    protected function createTestRequest($symfonyRequest)
+    {
+        return Request::createFromBase($symfonyRequest);
     }
 
     /**
      * Create the test response instance from the given response.
      *
      * @param  \Illuminate\Http\Response  $response
-     * @return \Illuminate\Foundation\Testing\TestResponse
+     * @return \Illuminate\Testing\TestResponse
      */
     protected function createTestResponse($response)
     {
-        return TestResponse::fromBaseResponse($response);
+        return tap(TestResponse::fromBaseResponse($response), function ($response) {
+            $response->withExceptions(
+                $this->app->bound(LoggedExceptionCollection::class)
+                    ? $this->app->make(LoggedExceptionCollection::class)
+                    : new LoggedExceptionCollection
+            );
+        });
     }
 }

@@ -3,7 +3,7 @@
 /*
  * This file is part of Psy Shell.
  *
- * (c) 2012-2018 Justin Hileman
+ * (c) 2012-2026 Justin Hileman
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -21,22 +21,22 @@ use Symfony\Component\Console\Input\InputOption;
  */
 class FilterOptions
 {
-    private $filter = false;
-    private $pattern;
-    private $insensitive;
-    private $invert;
+    private bool $filter = false;
+    private ?string $pattern = null;
+    private bool $insensitive = false;
+    private bool $invert = false;
 
     /**
      * Get input option definitions for filtering.
      *
      * @return InputOption[]
      */
-    public static function getOptions()
+    public static function getOptions(): array
     {
         return [
-            new InputOption('grep',        'G', InputOption::VALUE_REQUIRED, 'Limit to items matching the given pattern (string or regex).'),
-            new InputOption('insensitive', 'i', InputOption::VALUE_NONE,     'Case-insensitive search (requires --grep).'),
-            new InputOption('invert',      'v', InputOption::VALUE_NONE,     'Inverted search (requires --grep).'),
+            new InputOption('grep', 'G', InputOption::VALUE_REQUIRED, 'Limit to items matching the given pattern (string or regex).'),
+            new InputOption('insensitive', 'i', InputOption::VALUE_NONE, 'Case-insensitive search (requires --grep).'),
+            new InputOption('invert', 'v', InputOption::VALUE_NONE, 'Inverted search (requires --grep).'),
         ];
     }
 
@@ -56,7 +56,7 @@ class FilterOptions
         }
 
         if (!$this->stringIsRegex($pattern)) {
-            $pattern = '/' . \preg_quote($pattern, '/') . '/';
+            $pattern = '/'.\preg_quote($pattern, '/').'/';
         }
 
         if ($insensitive = $input->getOption('insensitive')) {
@@ -65,18 +65,16 @@ class FilterOptions
 
         $this->validateRegex($pattern);
 
-        $this->filter      = true;
-        $this->pattern     = $pattern;
+        $this->filter = true;
+        $this->pattern = $pattern;
         $this->insensitive = $insensitive;
-        $this->invert      = $input->getOption('invert');
+        $this->invert = $input->getOption('invert');
     }
 
     /**
      * Check whether the bound input has filter options.
-     *
-     * @return bool
      */
-    public function hasFilter()
+    public function hasFilter(): bool
     {
         return $this->filter;
     }
@@ -84,29 +82,31 @@ class FilterOptions
     /**
      * Check whether a string matches the current filter options.
      *
-     * @param string $string
-     * @param array  $matches
-     *
-     * @return bool
+     * @param string     $string
+     * @param array|null $matches
      */
-    public function match($string, array &$matches = null)
+    public function match(string $string, ?array &$matches = null): bool
     {
-        return $this->filter === false || (\preg_match($this->pattern, $string, $matches) xor $this->invert);
+        if ($this->filter === false || $this->pattern === null) {
+            return true;
+        }
+
+        return \preg_match($this->pattern, $string, $matches) xor $this->invert;
     }
 
     /**
      * Validate that grep, invert and insensitive input options are consistent.
      *
-     * @param InputInterface $input
+     * @throws RuntimeException if input is invalid
      *
-     * @return bool
+     * @param InputInterface $input
      */
     private function validateInput(InputInterface $input)
     {
         if (!$input->getOption('grep')) {
             foreach (['invert', 'insensitive'] as $option) {
                 if ($input->getOption($option)) {
-                    throw new RuntimeException('--' . $option . ' does not make sense without --grep');
+                    throw new RuntimeException('--'.$option.' does not make sense without --grep');
                 }
             }
         }
@@ -116,10 +116,8 @@ class FilterOptions
      * Check whether a string appears to be a regular expression.
      *
      * @param string $string
-     *
-     * @return bool
      */
-    private function stringIsRegex($string)
+    private function stringIsRegex(string $string): bool
     {
         return \substr($string, 0, 1) === '/' && \substr($string, -1) === '/' && \strlen($string) >= 3;
     }
@@ -127,19 +125,20 @@ class FilterOptions
     /**
      * Validate that $pattern is a valid regular expression.
      *
-     * @param string $pattern
+     * @throws RuntimeException if pattern is invalid
      *
-     * @return bool
+     * @param string $pattern
      */
-    private function validateRegex($pattern)
+    private function validateRegex(string $pattern)
     {
-        \set_error_handler(['Psy\Exception\ErrorException', 'throwException']);
+        \set_error_handler([ErrorException::class, 'throwException']);
         try {
+            // @phan-suppress-next-line PhanParamSuspiciousOrder - intentionally testing regex against empty string
             \preg_match($pattern, '');
         } catch (ErrorException $e) {
-            \restore_error_handler();
             throw new RuntimeException(\str_replace('preg_match(): ', 'Invalid regular expression: ', $e->getRawMessage()));
+        } finally {
+            \restore_error_handler();
         }
-        \restore_error_handler();
     }
 }

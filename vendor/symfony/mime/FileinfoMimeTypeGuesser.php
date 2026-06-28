@@ -21,43 +21,43 @@ use Symfony\Component\Mime\Exception\LogicException;
  */
 class FileinfoMimeTypeGuesser implements MimeTypeGuesserInterface
 {
-    private $magicFile;
+    private ?string $magicFile;
 
     /**
-     * @param string $magicFile A magic file to use with the finfo instance
+     * @param string|null $magicFile A magic file to use with the finfo instance
      *
-     * @see http://www.php.net/manual/en/function.finfo-open.php
+     * @see https://php.net/finfo-open
      */
-    public function __construct(string $magicFile = null)
+    public function __construct(?string $magicFile = null)
     {
         $this->magicFile = $magicFile;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isGuesserSupported(): bool
     {
         return \function_exists('finfo_open');
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function guessMimeType(string $path): ?string
     {
         if (!is_file($path) || !is_readable($path)) {
-            throw new InvalidArgumentException(sprintf('The "%s" file does not exist or is not readable.', $path));
+            throw new InvalidArgumentException(\sprintf('The "%s" file does not exist or is not readable.', $path));
         }
 
         if (!$this->isGuesserSupported()) {
-            throw new LogicException(sprintf('The "%s" guesser is not supported.', __CLASS__));
+            throw new LogicException(\sprintf('The "%s" guesser is not supported.', __CLASS__));
         }
 
-        if (false === $finfo = new \finfo(FILEINFO_MIME_TYPE, $this->magicFile)) {
+        if (false === $finfo = new \finfo(\FILEINFO_MIME_TYPE, $this->magicFile)) {
             return null;
         }
+        $mimeType = $finfo->file($path);
 
-        return $finfo->file($path);
+        if ($mimeType && 0 === (\strlen($mimeType) % 2)) {
+            $mimeStart = substr($mimeType, 0, \strlen($mimeType) >> 1);
+            $mimeType = $mimeStart.$mimeStart === $mimeType ? $mimeStart : $mimeType;
+        }
+
+        return $mimeType;
     }
 }

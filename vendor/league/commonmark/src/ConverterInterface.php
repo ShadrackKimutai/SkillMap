@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the league/commonmark package.
  *
@@ -11,19 +13,18 @@
 
 namespace League\CommonMark;
 
+use League\CommonMark\Exception\CommonMarkException;
+use League\CommonMark\Output\RenderedContentInterface;
+use League\Config\Exception\ConfigurationExceptionInterface;
+
 /**
- * Interface for a service which converts CommonMark to HTML.
+ * Interface for a service which converts content from one format (like Markdown) to another (like HTML).
  */
 interface ConverterInterface
 {
     /**
-     * Converts CommonMark to HTML.
-     *
-     * @param string $commonMark
-     *
-     * @return string HTML
-     *
-     * @api
+     * @throws CommonMarkException
+     * @throws ConfigurationExceptionInterface
      */
-    public function convertToHtml(string $commonMark): string;
+    public function convert(string $input): RenderedContentInterface;
 }

@@ -9,16 +9,24 @@
  */
 namespace PHPUnit\Framework\Constraint;
 
+use Closure;
+use ReflectionFunction;
+
 /**
- * Constraint that evaluates against a specified closure.
+ * @psalm-template CallbackInput of mixed
+ *
+ * @no-named-arguments Parameter names are not covered by the backward compatibility promise for PHPUnit
  */
 final class Callback extends Constraint
 {
     /**
-     * @var callable
+     * @psalm-var callable(CallbackInput $input): bool
      */
-    private $callback;
+    private readonly mixed $callback;
 
+    /**
+     * @psalm-param callable(CallbackInput $input): bool $callback
+     */
     public function __construct(callable $callback)
     {
         $this->callback = $callback;
@@ -33,13 +41,33 @@ final class Callback extends Constraint
     }
 
     /**
+     * @psalm-suppress ArgumentTypeCoercion
+     */
+    public function isVariadic(): bool
+    {
+        foreach ((new ReflectionFunction(Closure::fromCallable($this->callback)))->getParameters() as $parameter) {
+            if ($parameter->isVariadic()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Evaluates the constraint for parameter $value. Returns true if the
      * constraint is met, false otherwise.
      *
-     * @param mixed $other value or object to evaluate
+     * @psalm-param CallbackInput $other
+     *
+     * @psalm-suppress InvalidArgument
      */
-    protected function matches($other): bool
+    protected function matches(mixed $other): bool
     {
-        return \call_user_func($this->callback, $other);
+        if ($this->isVariadic()) {
+            return ($this->callback)(...$other);
+        }
+
+        return ($this->callback)($other);
     }
 }

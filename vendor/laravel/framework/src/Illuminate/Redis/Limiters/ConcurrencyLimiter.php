@@ -2,9 +2,10 @@
 
 namespace Illuminate\Redis\Limiters;
 
-use Exception;
 use Illuminate\Contracts\Redis\LimiterTimeoutException;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
+use Throwable;
 
 class ConcurrencyLimiter
 {
@@ -58,12 +59,13 @@ class ConcurrencyLimiter
      *
      * @param  int  $timeout
      * @param  callable|null  $callback
-     * @return bool
+     * @param  int  $sleep
+     * @return mixed
      *
      * @throws \Illuminate\Contracts\Redis\LimiterTimeoutException
-     * @throws \Exception
+     * @throws \Throwable
      */
-    public function block($timeout, $callback = null)
+    public function block($timeout, $callback = null, $sleep = 250)
     {
         $starting = time();
 
@@ -74,7 +76,7 @@ class ConcurrencyLimiter
                 throw new LimiterTimeoutException;
             }
 
-            usleep(250 * 1000);
+            Sleep::usleep($sleep * 1000);
         }
 
         if (is_callable($callback)) {
@@ -82,7 +84,7 @@ class ConcurrencyLimiter
                 return tap($callback(), function () use ($slot, $id) {
                     $this->release($slot, $id);
                 });
-            } catch (Exception $exception) {
+            } catch (Throwable $exception) {
                 $this->release($slot, $id);
 
                 throw $exception;

@@ -2,50 +2,13 @@
 
 namespace Illuminate\Queue;
 
+use Illuminate\Queue\Attributes\WithoutRelations;
 use ReflectionClass;
 use ReflectionProperty;
 
 trait SerializesModels
 {
     use SerializesAndRestoresModelIdentifiers;
-
-    /**
-     * Prepare the instance for serialization.
-     *
-     * @return array
-     */
-    public function __sleep()
-    {
-        $properties = (new ReflectionClass($this))->getProperties();
-
-        foreach ($properties as $property) {
-            $property->setValue($this, $this->getSerializedPropertyValue(
-                $this->getPropertyValue($property)
-            ));
-        }
-
-        return array_values(array_filter(array_map(function ($p) {
-            return $p->isStatic() ? null : $p->getName();
-        }, $properties)));
-    }
-
-    /**
-     * Restore the model after serialization.
-     *
-     * @return void
-     */
-    public function __wakeup()
-    {
-        foreach ((new ReflectionClass($this))->getProperties() as $property) {
-            if ($property->isStatic()) {
-                continue;
-            }
-
-            $property->setValue($this, $this->getRestoredPropertyValue(
-                $this->getPropertyValue($property)
-            ));
-        }
-    }
 
     /**
      * Prepare the instance values for serialization.
@@ -56,12 +19,26 @@ trait SerializesModels
     {
         $values = [];
 
-        $properties = (new ReflectionClass($this))->getProperties();
+        $reflectionClass = new ReflectionClass($this);
 
-        $class = get_class($this);
+        [$class, $properties, $classLevelWithoutRelations] = [
+            get_class($this),
+            $reflectionClass->getProperties(),
+            ! empty($reflectionClass->getAttributes(WithoutRelations::class)),
+        ];
 
         foreach ($properties as $property) {
             if ($property->isStatic()) {
+                continue;
+            }
+
+            if (! $property->isInitialized($this)) {
+                continue;
+            }
+
+            $value = $this->getPropertyValue($property);
+
+            if ($property->hasDefaultValue() && $value === $property->getDefaultValue()) {
                 continue;
             }
 
@@ -74,7 +51,9 @@ trait SerializesModels
             }
 
             $values[$name] = $this->getSerializedPropertyValue(
-                $this->getPropertyValue($property)
+                $value,
+                ! $classLevelWithoutRelations &&
+                    empty($property->getAttributes(WithoutRelations::class))
             );
         }
 
@@ -85,7 +64,7 @@ trait SerializesModels
      * Restore the model after serialization.
      *
      * @param  array  $values
-     * @return array
+     * @return void
      */
     public function __unserialize(array $values)
     {
@@ -110,14 +89,10 @@ trait SerializesModels
                 continue;
             }
 
-            $property->setAccessible(true);
-
             $property->setValue(
                 $this, $this->getRestoredPropertyValue($values[$name])
             );
         }
-
-        return $values;
     }
 
     /**
@@ -128,8 +103,6 @@ trait SerializesModels
      */
     protected function getPropertyValue(ReflectionProperty $property)
     {
-        $property->setAccessible(true);
-
         return $property->getValue($this);
     }
 }

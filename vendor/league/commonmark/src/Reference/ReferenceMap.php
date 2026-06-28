@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the league/commonmark package.
  *
@@ -14,54 +16,70 @@
 
 namespace League\CommonMark\Reference;
 
+use League\CommonMark\Normalizer\TextNormalizer;
+
 /**
  * A collection of references, indexed by label
  */
 final class ReferenceMap implements ReferenceMapInterface
 {
-    /**
-     * @var ReferenceInterface[]
-     */
-    protected $references = [];
+    /** @psalm-readonly */
+    private TextNormalizer $normalizer;
 
     /**
-     * {@inheritdoc}
+     * @var array<string, ReferenceInterface>
+     *
+     * @psalm-readonly-allow-private-mutation
      */
-    public function addReference(ReferenceInterface $reference): void
+    private array $references = [];
+
+    public function __construct()
     {
-        $key = Reference::normalizeReference($reference->getLabel());
+        $this->normalizer = new TextNormalizer();
+    }
+
+    public function add(ReferenceInterface $reference): void
+    {
+        // Normalize the key
+        $key = $this->normalizer->normalize($reference->getLabel());
+        // Store the reference
         $this->references[$key] = $reference;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function contains(string $label): bool
     {
-        $label = Reference::normalizeReference($label);
+        if ($this->references === []) {
+            return false;
+        }
+
+        $label = $this->normalizer->normalize($label);
 
         return isset($this->references[$label]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getReference(string $label): ?ReferenceInterface
+    public function get(string $label): ?ReferenceInterface
     {
-        $label = Reference::normalizeReference($label);
-
-        if (!isset($this->references[$label])) {
+        if ($this->references === []) {
             return null;
         }
 
-        return $this->references[$label];
+        $label = $this->normalizer->normalize($label);
+
+        return $this->references[$label] ?? null;
     }
 
     /**
-     * {@inheritdoc}
+     * @return \Traversable<string, ReferenceInterface>
      */
-    public function listReferences(): iterable
+    public function getIterator(): \Traversable
     {
-        return \array_values($this->references);
+        foreach ($this->references as $normalizedLabel => $reference) {
+            yield $normalizedLabel => $reference;
+        }
+    }
+
+    public function count(): int
+    {
+        return \count($this->references);
     }
 }

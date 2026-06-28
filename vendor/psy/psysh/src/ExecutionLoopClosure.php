@@ -3,7 +3,7 @@
 /*
  * This file is part of Psy Shell.
  *
- * (c) 2012-2018 Justin Hileman
+ * (c) 2012-2026 Justin Hileman
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -12,15 +12,13 @@
 namespace Psy;
 
 use Psy\Exception\BreakException;
-use Psy\Exception\ErrorException;
+use Psy\Exception\InterruptException;
 use Psy\Exception\ThrowUpException;
-use Psy\Exception\TypeErrorException;
 
 /**
  * The Psy Shell's execution loop scope.
  *
- * @todo Once we're on PHP 5.5, we can switch ExecutionClosure to a generator
- * and get rid of the duplicate closure implementations :)
+ * @todo Switch ExecutionClosure to a generator and get rid of the duplicate closure implementations?
  */
 class ExecutionLoopClosure extends ExecutionClosure
 {
@@ -31,9 +29,10 @@ class ExecutionLoopClosure extends ExecutionClosure
     {
         $this->setClosure($__psysh__, function () use ($__psysh__) {
             // Restore execution scope variables
+            // @phan-suppress-next-line PhanTypeNonVarPassByRef assigning to a temp variable pollutes scope
             \extract($__psysh__->getScopeVariables(false));
 
-            do {
+            while (true) {
                 $__psysh__->beforeLoop();
 
                 try {
@@ -42,6 +41,7 @@ class ExecutionLoopClosure extends ExecutionClosure
                     try {
                         // Pull in any new execution scope variables
                         if ($__psysh__->getLastExecSuccess()) {
+                            // @phan-suppress-next-line PhanTypeNonVarPassByRef assigning to a temp variable pollutes scope
                             \extract($__psysh__->getScopeVariablesDiff(\get_defined_vars()));
                         }
 
@@ -55,24 +55,15 @@ class ExecutionLoopClosure extends ExecutionClosure
                         $_ = eval($__psysh__->onExecute($__psysh__->flushCode() ?: ExecutionClosure::NOOP_INPUT));
                     } catch (\Throwable $_e) {
                         // Clean up on our way out.
-                        \restore_error_handler();
                         if (\ob_get_level() > 0) {
                             \ob_end_clean();
                         }
 
                         throw $_e;
-                    } catch (\Exception $_e) {
-                        // Clean up on our way out.
+                    } finally {
+                        // Won't be needing this anymore
                         \restore_error_handler();
-                        if (\ob_get_level() > 0) {
-                            \ob_end_clean();
-                        }
-
-                        throw $_e;
                     }
-
-                    // Won't be needing this anymore
-                    \restore_error_handler();
 
                     // Flush stdout (write to shell output, plus save to magic variable)
                     \ob_end_flush();
@@ -82,23 +73,25 @@ class ExecutionLoopClosure extends ExecutionClosure
 
                     $__psysh__->writeReturnValue($_);
                 } catch (BreakException $_e) {
+                    // exit() or ctrl-d exits the REPL
                     $__psysh__->writeException($_e);
 
-                    return;
+                    return $_e->getCode();
                 } catch (ThrowUpException $_e) {
+                    // `throw-up` command throws the exception out of the REPL
                     $__psysh__->writeException($_e);
 
                     throw $_e;
-                } catch (\TypeError $_e) {
-                    $__psysh__->writeException(TypeErrorException::fromTypeError($_e));
-                } catch (\Error $_e) {
-                    $__psysh__->writeException(ErrorException::fromError($_e));
-                } catch (\Exception $_e) {
+                } catch (InterruptException $_e) {
+                    // ctrl-c stops execution, but continues the REPL
                     $__psysh__->writeException($_e);
+                } catch (\Throwable $_e) {
+                    // Everything else gets printed to the shell output
+                    $__psysh__->writeException($_e);
+                } finally {
+                    $__psysh__->afterLoop();
                 }
-
-                $__psysh__->afterLoop();
-            } while (true);
+            }
         });
     }
 }

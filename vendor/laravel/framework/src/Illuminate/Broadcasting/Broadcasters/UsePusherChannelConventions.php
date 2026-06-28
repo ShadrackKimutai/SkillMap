@@ -7,7 +7,7 @@ use Illuminate\Support\Str;
 trait UsePusherChannelConventions
 {
     /**
-     * Return true if channel is protected by authentication.
+     * Return true if the channel is protected by authentication.
      *
      * @param  string  $channel
      * @return bool
@@ -25,10 +25,10 @@ trait UsePusherChannelConventions
      */
     public function normalizeChannelName($channel)
     {
-        if ($this->isGuardedChannel($channel)) {
-            return Str::startsWith($channel, 'private-')
-                ? Str::replaceFirst('private-', '', $channel)
-                : Str::replaceFirst('presence-', '', $channel);
+        foreach (['private-encrypted-', 'private-', 'presence-'] as $prefix) {
+            if (Str::startsWith($channel, $prefix)) {
+                return Str::replaceFirst($prefix, '', $channel);
+            }
         }
 
         return $channel;

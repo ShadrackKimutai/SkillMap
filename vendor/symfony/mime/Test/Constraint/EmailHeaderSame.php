@@ -12,12 +12,13 @@
 namespace Symfony\Component\Mime\Test\Constraint;
 
 use PHPUnit\Framework\Constraint\Constraint;
+use Symfony\Component\Mime\Header\UnstructuredHeader;
 use Symfony\Component\Mime\RawMessage;
 
 final class EmailHeaderSame extends Constraint
 {
-    private $headerName;
-    private $expectedValue;
+    private string $headerName;
+    private string $expectedValue;
 
     public function __construct(string $headerName, string $expectedValue)
     {
@@ -25,35 +26,37 @@ final class EmailHeaderSame extends Constraint
         $this->expectedValue = $expectedValue;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function toString(): string
     {
-        return sprintf('has header "%s" with value "%s"', $this->headerName, $this->expectedValue);
+        return \sprintf('has header "%s" with value "%s"', $this->headerName, $this->expectedValue);
     }
 
     /**
      * @param RawMessage $message
-     *
-     * {@inheritdoc}
      */
     protected function matches($message): bool
     {
-        if (RawMessage::class === \get_class($message)) {
+        if (RawMessage::class === $message::class) {
             throw new \LogicException('Unable to test a message header on a RawMessage instance.');
         }
 
-        return $this->expectedValue === $message->getHeaders()->get($this->headerName)->getBodyAsString();
+        return $this->expectedValue === $this->getHeaderValue($message);
     }
 
     /**
      * @param RawMessage $message
-     *
-     * {@inheritdoc}
      */
     protected function failureDescription($message): string
     {
-        return sprintf('the Email %s (value is %s)', $this->toString(), $message->getHeaders()->get($this->headerName)->getBodyAsString());
+        return \sprintf('the Email %s (value is %s)', $this->toString(), $this->getHeaderValue($message) ?? 'null');
+    }
+
+    private function getHeaderValue($message): ?string
+    {
+        if (null === $header = $message->getHeaders()->get($this->headerName)) {
+            return null;
+        }
+
+        return $header instanceof UnstructuredHeader ? $header->getValue() : $header->getBodyAsString();
     }
 }

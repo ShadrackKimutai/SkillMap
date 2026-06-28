@@ -1,18 +1,13 @@
 <?php
 
-namespace DummyNamespace;
+namespace {{ namespace }};
 
-use Illuminate\Auth\Access\HandlesAuthorization;
-use NamespacedDummyUserModel;
+use {{ namespacedUserModel }};
 
-class DummyClass
+class {{ class }}
 {
-    use HandlesAuthorization;
-
     /**
      * Create a new policy instance.
-     *
-     * @return void
      */
     public function __construct()
     {

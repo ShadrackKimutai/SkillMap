@@ -1,15 +1,13 @@
 <?php
 
-namespace DummyNamespace;
+namespace {{ namespace }};
 
-use NamespacedDummyUserModel;
+use {{ namespacedUserModel }};
 
-class DummyClass
+class {{ class }}
 {
     /**
      * Create a new channel instance.
-     *
-     * @return void
      */
     public function __construct()
     {
@@ -18,11 +16,8 @@ class DummyClass
 
     /**
      * Authenticate the user's access to the channel.
-     *
-     * @param  \NamespacedDummyUserModel  $user
-     * @return array|bool
      */
-    public function join(DummyUser $user)
+    public function join({{ userModel }} $user): array|bool
     {
         //
     }

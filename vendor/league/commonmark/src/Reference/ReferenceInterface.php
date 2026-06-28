@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the league/commonmark package.
  *
@@ -19,18 +21,9 @@ namespace League\CommonMark\Reference;
  */
 interface ReferenceInterface
 {
-    /**
-     * @return string
-     */
     public function getLabel(): string;
 
-    /**
-     * @return string
-     */
     public function getDestination(): string;
 
-    /**
-     * @return string
-     */
     public function getTitle(): string;
 }

@@ -3,7 +3,7 @@
 /*
  * This file is part of Psy Shell.
  *
- * (c) 2012-2018 Justin Hileman
+ * (c) 2012-2026 Justin Hileman
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -12,6 +12,7 @@
 namespace Psy\TabCompletion\Matcher;
 
 use Psy\Command\Command;
+use Psy\CommandAware;
 
 /**
  * A Psy Command tab completion Matcher.
@@ -21,7 +22,7 @@ use Psy\Command\Command;
  *
  * @author Marc Garcia <markcial@gmail.com>
  */
-class CommandsMatcher extends AbstractMatcher
+class CommandsMatcher extends AbstractMatcher implements CommandAware
 {
     /** @var string[] */
     protected $commands = [];
@@ -37,7 +38,7 @@ class CommandsMatcher extends AbstractMatcher
     }
 
     /**
-     * Set Commands for completion.
+     * Set commands for completion.
      *
      * @param Command[] $commands
      */
@@ -45,8 +46,10 @@ class CommandsMatcher extends AbstractMatcher
     {
         $names = [];
         foreach ($commands as $command) {
-            $names = \array_merge([$command->getName()], $names);
-            $names = \array_merge($command->getAliases(), $names);
+            $names[] = $command->getName();
+            foreach ($command->getAliases() as $alias) {
+                $names[] = $alias;
+            }
         }
         $this->commands = $names;
     }
@@ -55,10 +58,8 @@ class CommandsMatcher extends AbstractMatcher
      * Check whether a command $name is defined.
      *
      * @param string $name
-     *
-     * @return bool
      */
-    protected function isCommand($name)
+    protected function isCommand(string $name): bool
     {
         return \in_array($name, $this->commands);
     }
@@ -67,10 +68,8 @@ class CommandsMatcher extends AbstractMatcher
      * Check whether input matches a defined command.
      *
      * @param string $name
-     *
-     * @return bool
      */
-    protected function matchCommand($name)
+    protected function matchCommand(string $name): bool
     {
         foreach ($this->commands as $cmd) {
             if ($this->startsWith($name, $cmd)) {
@@ -84,28 +83,26 @@ class CommandsMatcher extends AbstractMatcher
     /**
      * {@inheritdoc}
      */
-    public function getMatches(array $tokens, array $info = [])
+    public function getMatches(array $tokens, array $info = []): array
     {
         $input = $this->getInput($tokens);
 
-        return \array_filter($this->commands, function ($command) use ($input) {
-            return AbstractMatcher::startsWith($input, $command);
-        });
+        return \array_filter($this->commands, fn ($command) => AbstractMatcher::startsWith($input, $command));
     }
 
     /**
      * {@inheritdoc}
      */
-    public function hasMatched(array $tokens)
+    public function hasMatched(array $tokens): bool
     {
         /* $openTag */ \array_shift($tokens);
         $command = \array_shift($tokens);
 
         switch (true) {
             case self::tokenIs($command, self::T_STRING) &&
-                !$this->isCommand($command[1]) &&
-                $this->matchCommand($command[1]) &&
-                empty($tokens):
+            !$this->isCommand($command[1]) &&
+            $this->matchCommand($command[1]) &&
+            empty($tokens):
                 return true;
         }
 

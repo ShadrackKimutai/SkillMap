@@ -45,31 +45,47 @@ class StatusCommand extends BaseCommand
     /**
      * Execute the console command.
      *
-     * @return void
+     * @return int|null
      */
     public function handle()
     {
-        $this->migrator->setConnection($this->option('database'));
+        return $this->migrator->usingConnection($this->option('database'), function () {
+            if (! $this->migrator->repositoryExists()) {
+                $this->components->error('Migration table not found.');
 
-        if (! $this->migrator->repositoryExists()) {
-            $this->error('Migration table not found.');
+                return 1;
+            }
 
-            return 1;
-        }
+            $ran = $this->migrator->getRepository()->getRan();
 
-        $ran = $this->migrator->getRepository()->getRan();
+            $batches = $this->migrator->getRepository()->getMigrationBatches();
 
-        $batches = $this->migrator->getRepository()->getMigrationBatches();
+            $migrations = $this->getStatusFor($ran, $batches)
+                ->when($this->option('pending'), fn ($collection) => $collection->filter(function ($migration) {
+                    return str($migration[1])->contains('Pending');
+                }));
 
-        if (count($migrations = $this->getStatusFor($ran, $batches)) > 0) {
-            $this->table(['Ran?', 'Migration', 'Batch'], $migrations);
-        } else {
-            $this->error('No migrations found');
-        }
+            if (count($migrations) > 0) {
+                $this->newLine();
+
+                $this->components->twoColumnDetail('<fg=gray>Migration name</>', '<fg=gray>Batch / Status</>');
+
+                $migrations
+                    ->each(
+                        fn ($migration) => $this->components->twoColumnDetail($migration[0], $migration[1])
+                    );
+
+                $this->newLine();
+            } elseif ($this->option('pending')) {
+                $this->components->info('No pending migrations');
+            } else {
+                $this->components->info('No migrations found');
+            }
+        });
     }
 
     /**
-     * Get the status for the given ran migrations.
+     * Get the status for the given run migrations.
      *
      * @param  array  $ran
      * @param  array  $batches
@@ -81,9 +97,15 @@ class StatusCommand extends BaseCommand
                     ->map(function ($migration) use ($ran, $batches) {
                         $migrationName = $this->migrator->getMigrationName($migration);
 
-                        return in_array($migrationName, $ran)
-                                ? ['<info>Yes</info>', $migrationName, $batches[$migrationName]]
-                                : ['<fg=red>No</fg=red>', $migrationName];
+                        $status = in_array($migrationName, $ran)
+                            ? '<fg=green;options=bold>Ran</>'
+                            : '<fg=yellow;options=bold>Pending</>';
+
+                        if (in_array($migrationName, $ran)) {
+                            $status = '['.$batches[$migrationName].'] '.$status;
+                        }
+
+                        return [$migrationName, $status];
                     });
     }
 
@@ -106,9 +128,8 @@ class StatusCommand extends BaseCommand
     {
         return [
             ['database', null, InputOption::VALUE_OPTIONAL, 'The database connection to use'],
-
+            ['pending', null, InputOption::VALUE_NONE, 'Only list pending migrations'],
             ['path', null, InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, 'The path(s) to the migrations files to use'],
-
             ['realpath', null, InputOption::VALUE_NONE, 'Indicate any provided migration file paths are pre-resolved absolute paths'],
         ];
     }

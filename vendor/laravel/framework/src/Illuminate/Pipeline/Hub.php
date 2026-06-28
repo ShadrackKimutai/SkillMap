@@ -28,7 +28,7 @@ class Hub implements HubContract
      * @param  \Illuminate\Contracts\Container\Container|null  $container
      * @return void
      */
-    public function __construct(Container $container = null)
+    public function __construct(?Container $container = null)
     {
         $this->container = $container;
     }
@@ -70,5 +70,28 @@ class Hub implements HubContract
         return call_user_func(
             $this->pipelines[$pipeline], new Pipeline($this->container), $object
         );
+    }
+
+    /**
+     * Get the container instance used by the hub.
+     *
+     * @return \Illuminate\Contracts\Container\Container
+     */
+    public function getContainer()
+    {
+        return $this->container;
+    }
+
+    /**
+     * Set the container instance used by the hub.
+     *
+     * @param  \Illuminate\Contracts\Container\Container  $container
+     * @return $this
+     */
+    public function setContainer(Container $container)
+    {
+        $this->container = $container;
+
+        return $this;
     }
 }

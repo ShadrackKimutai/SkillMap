@@ -3,7 +3,7 @@
 /*
  * This file is part of Psy Shell.
  *
- * (c) 2012-2018 Justin Hileman
+ * (c) 2012-2026 Justin Hileman
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -23,21 +23,19 @@ class ConstantsMatcher extends AbstractMatcher
     /**
      * {@inheritdoc}
      */
-    public function getMatches(array $tokens, array $info = [])
+    public function getMatches(array $tokens, array $info = []): array
     {
         $const = $this->getInput($tokens);
 
-        return \array_filter(\array_keys(\get_defined_constants()), function ($constant) use ($const) {
-            return AbstractMatcher::startsWith($const, $constant);
-        });
+        return \array_filter(\array_keys(\get_defined_constants()), fn ($constant) => AbstractMatcher::startsWith($const, $constant));
     }
 
     /**
      * {@inheritdoc}
      */
-    public function hasMatched(array $tokens)
+    public function hasMatched(array $tokens): bool
     {
-        $token     = \array_pop($tokens);
+        $token = \array_pop($tokens);
         $prevToken = \array_pop($tokens);
 
         switch (true) {

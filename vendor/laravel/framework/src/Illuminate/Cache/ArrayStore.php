@@ -3,6 +3,7 @@
 namespace Illuminate\Cache;
 
 use Illuminate\Contracts\Cache\LockProvider;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\InteractsWithTime;
 
 class ArrayStore extends TaggableStore implements LockProvider
@@ -24,6 +25,24 @@ class ArrayStore extends TaggableStore implements LockProvider
     public $locks = [];
 
     /**
+     * Indicates if values are serialized within the store.
+     *
+     * @var bool
+     */
+    protected $serializesValues;
+
+    /**
+     * Create a new Array store.
+     *
+     * @param  bool  $serializesValues
+     * @return void
+     */
+    public function __construct($serializesValues = false)
+    {
+        $this->serializesValues = $serializesValues;
+    }
+
+    /**
      * Retrieve an item from the cache by key.
      *
      * @param  string|array  $key
@@ -39,13 +58,13 @@ class ArrayStore extends TaggableStore implements LockProvider
 
         $expiresAt = $item['expiresAt'] ?? 0;
 
-        if ($expiresAt !== 0 && $this->currentTime() > $expiresAt) {
+        if ($expiresAt !== 0 && (Carbon::now()->getPreciseTimestamp(3) / 1000) >= $expiresAt) {
             $this->forget($key);
 
             return;
         }
 
-        return $item['value'];
+        return $this->serializesValues ? unserialize($item['value']) : $item['value'];
     }
 
     /**
@@ -59,7 +78,7 @@ class ArrayStore extends TaggableStore implements LockProvider
     public function put($key, $value, $seconds)
     {
         $this->storage[$key] = [
-            'value' => $value,
+            'value' => $this->serializesValues ? serialize($value) : $value,
             'expiresAt' => $this->calculateExpiration($seconds),
         ];
 
@@ -75,15 +94,17 @@ class ArrayStore extends TaggableStore implements LockProvider
      */
     public function increment($key, $value = 1)
     {
-        if (! isset($this->storage[$key])) {
-            $this->forever($key, $value);
+        if (! is_null($existing = $this->get($key))) {
+            return tap(((int) $existing) + $value, function ($incremented) use ($key) {
+                $value = $this->serializesValues ? serialize($incremented) : $incremented;
 
-            return $this->storage[$key]['value'];
+                $this->storage[$key]['value'] = $value;
+            });
         }
 
-        $this->storage[$key]['value'] = ((int) $this->storage[$key]['value']) + $value;
+        $this->forever($key, $value);
 
-        return $this->storage[$key]['value'];
+        return $value;
     }
 
     /**
@@ -153,7 +174,7 @@ class ArrayStore extends TaggableStore implements LockProvider
      * Get the expiration time of the key.
      *
      * @param  int  $seconds
-     * @return int
+     * @return float
      */
     protected function calculateExpiration($seconds)
     {
@@ -161,14 +182,14 @@ class ArrayStore extends TaggableStore implements LockProvider
     }
 
     /**
-     * Get the UNIX timestamp for the given number of seconds.
+     * Get the UNIX timestamp, with milliseconds, for the given number of seconds in the future.
      *
      * @param  int  $seconds
-     * @return int
+     * @return float
      */
     protected function toTimestamp($seconds)
     {
-        return $seconds > 0 ? $this->availableAt($seconds) : 0;
+        return $seconds > 0 ? (Carbon::now()->getPreciseTimestamp(3) / 1000) + $seconds : 0;
     }
 
     /**

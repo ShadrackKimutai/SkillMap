@@ -3,7 +3,7 @@
 /*
  * This file is part of Psy Shell.
  *
- * (c) 2012-2018 Justin Hileman
+ * (c) 2012-2026 Justin Hileman
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
@@ -11,10 +11,8 @@
 
 namespace Psy\Command;
 
-use JakubOnderka\PhpConsoleHighlighter\Highlighter;
-use Psy\Configuration;
-use Psy\ConsoleColorFactory;
 use Psy\Exception\RuntimeException;
+use Psy\Exception\UnexpectedTargetException;
 use Psy\Formatter\CodeFormatter;
 use Psy\Formatter\SignatureFormatter;
 use Psy\Input\CodeArgument;
@@ -28,31 +26,19 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ShowCommand extends ReflectingCommand
 {
-    private $colorMode;
-    private $highlighter;
-    private $lastException;
-    private $lastExceptionIndex;
-
-    /**
-     * @param null|string $colorMode (default: null)
-     */
-    public function __construct($colorMode = null)
-    {
-        $this->colorMode = $colorMode ?: Configuration::COLOR_MODE_AUTO;
-
-        parent::__construct();
-    }
+    private ?\Throwable $lastException = null;
+    private ?int $lastExceptionIndex = null;
 
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('show')
             ->setDefinition([
                 new CodeArgument('target', CodeArgument::OPTIONAL, 'Function, class, instance, constant, method or property to show.'),
-                new InputOption('ex', null,  InputOption::VALUE_OPTIONAL, 'Show last exception context. Optionally specify a stack index.', 1),
+                new InputOption('ex', null, InputOption::VALUE_OPTIONAL, 'Show last exception context. Optionally specify a stack index.', 1),
             ])
             ->setDescription('Show the code for an object, class, constant, method or property.')
             ->setHelp(
@@ -60,7 +46,7 @@ class ShowCommand extends ReflectingCommand
 Show the code for an object, class, constant, method or property, or the context
 of the last exception.
 
-<return>cat --ex</return> defaults to showing the lines surrounding the location of the last
+<return>show --ex</return> defaults to showing the lines surrounding the location of the last
 exception. Invoking it more than once travels up the exception's stack trace,
 and providing a number shows the context of the given index of the trace.
 
@@ -75,8 +61,10 @@ HELP
 
     /**
      * {@inheritdoc}
+     *
+     * @return int 0 if everything went fine, or an exit code
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         // n.b. As far as I can tell, InputInterface doesn't want to tell me
         // whether an option with an optional value was actually passed. If you
@@ -114,13 +102,35 @@ HELP
 
     private function writeCodeContext(InputInterface $input, OutputInterface $output)
     {
-        list($target, $reflector) = $this->getTargetAndReflector($input->getArgument('target'));
+        $shellOutput = $this->shellOutput($output);
+
+        try {
+            list($target, $reflector) = $this->getTargetAndReflector($input->getArgument('target'), $output);
+        } catch (UnexpectedTargetException $e) {
+            // If we didn't get a target and Reflector, maybe we got a filename?
+            $target = $e->getTarget();
+            if (\is_string($target) && \is_file($target) && $code = @\file_get_contents($target)) {
+                $file = \realpath($target);
+                if ($file !== $this->context->get('__file')) {
+                    $this->context->setCommandScopeVariables([
+                        '__file' => $file,
+                        '__dir'  => \dirname($file),
+                    ]);
+                }
+
+                $shellOutput->page(CodeFormatter::formatCode($code));
+
+                return;
+            } else {
+                throw $e;
+            }
+        }
 
         // Set some magic local variables
         $this->setCommandScopeVariables($reflector);
 
         try {
-            $output->page(CodeFormatter::format($reflector, $this->colorMode), OutputInterface::OUTPUT_RAW);
+            $shellOutput->page(CodeFormatter::format($reflector));
         } catch (RuntimeException $e) {
             $output->writeln(SignatureFormatter::format($reflector));
             throw $e;
@@ -143,7 +153,7 @@ HELP
                 $index = 0;
             }
         } else {
-            $index = \max(0, \intval($input->getOption('ex')) - 1);
+            $index = \max(0, (int) $input->getOption('ex') - 1);
         }
 
         $trace = $exception->getTrace();
@@ -159,9 +169,12 @@ HELP
         $this->lastException = $exception;
         $this->lastExceptionIndex = $index;
 
-        $output->writeln($this->getApplication()->formatException($exception));
-        $output->writeln('--');
+        $shell = $this->getShell();
+
+        $shell->writeExceptionHeader($output, $exception);
+        $shell->writeSeparator($output);
         $this->writeTraceLine($output, $trace, $index);
+        $shell->writeSpacer($output);
         $this->writeTraceCodeSnippet($output, $trace, $index);
 
         $this->setCommandScopeVariablesFromContext($trace[$index]);
@@ -173,7 +186,7 @@ HELP
         $line = isset($trace[$index]['line']) ? $trace[$index]['line'] : 'n/a';
 
         $output->writeln(\sprintf(
-            'From <info>%s:%d</info> at <strong>level %d</strong> of backtrace (of %d).',
+            'From <info>%s:%d</info> at <strong>level %d</strong> of backtrace (of %d):',
             OutputFormatter::escape($file),
             OutputFormatter::escape($line),
             $index + 1,
@@ -181,16 +194,16 @@ HELP
         ));
     }
 
-    private function replaceCwd($file)
+    private function replaceCwd(string $file): string
     {
         if ($cwd = \getcwd()) {
-            $cwd = \rtrim($cwd, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+            $cwd = \rtrim($cwd, \DIRECTORY_SEPARATOR).\DIRECTORY_SEPARATOR;
         }
 
         if ($cwd === false) {
             return $file;
         } else {
-            return \preg_replace('/^' . \preg_quote($cwd, '/') . '/', '', $file);
+            return \preg_replace('/^'.\preg_quote($cwd, '/').'/', '', $file);
         }
     }
 
@@ -219,17 +232,10 @@ HELP
             return;
         }
 
-        $output->write($this->getHighlighter()->getCodeSnippet($code, $line, 5, 5), false, OutputInterface::OUTPUT_RAW);
-    }
+        $startLine = \max($line - 5, 0);
+        $endLine = $line + 5;
 
-    private function getHighlighter()
-    {
-        if (!$this->highlighter) {
-            $factory = new ConsoleColorFactory($this->colorMode);
-            $this->highlighter = new Highlighter($factory->getConsoleColor());
-        }
-
-        return $this->highlighter;
+        $output->write(CodeFormatter::formatCode($code, $startLine, $endLine, $line), false);
     }
 
     private function setCommandScopeVariablesFromContext(array $context)
@@ -247,7 +253,7 @@ HELP
                 if ($namespace = $refl->getNamespaceName()) {
                     $vars['__namespace'] = $namespace;
                 }
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 // oh well
             }
         } elseif (isset($context['function'])) {
@@ -258,7 +264,7 @@ HELP
                 if ($namespace = $refl->getNamespaceName()) {
                     $vars['__namespace'] = $namespace;
                 }
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 // oh well
             }
         }
@@ -283,7 +289,7 @@ HELP
         $this->context->setCommandScopeVariables($vars);
     }
 
-    private function extractEvalFileAndLine($file)
+    private function extractEvalFileAndLine(string $file)
     {
         if (\preg_match('/(.*)\\((\\d+)\\) : eval\\(\\)\'d code$/', $file, $matches)) {
             return [$matches[1], $matches[2]];
